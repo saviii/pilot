@@ -44,6 +44,17 @@ final class TVConnection: ObservableObject {
         open()
     }
 
+    #if DEBUG
+    /// Launch with `-demo` to see the remote without a TV.
+    func demo() {
+        host = "192.168.1.20"
+        volume = 14
+        apps = ["Netflix", "YouTube", "Prime Video", "Disney+", "Apple TV", "Spotify"]
+            .map { App(id: $0, title: $0, icon: nil) }
+        state = .connected
+    }
+    #endif
+
     func reconnect() {
         guard let host, state != .connected, state != .connecting, state != .waitingForApproval else { return }
         connect(to: host)

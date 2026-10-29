@@ -17,6 +17,9 @@ struct TVRemoteApp: App {
             .environmentObject(tv)
             .preferredColorScheme(.dark)
             .onChange(of: scenePhase) { _, phase in
+                #if DEBUG
+                if CommandLine.arguments.contains("-demo") { return tv.demo() }
+                #endif
                 if phase == .active { tv.reconnect() }
             }
         }
