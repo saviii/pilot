@@ -9,9 +9,7 @@ struct ConnectView: View {
         VStack(alignment: .leading, spacing: 24) {
             Spacer()
 
-            Text("TV REMOTE")
-                .font(.system(.caption, design: .monospaced))
-                .foregroundStyle(.secondary)
+            Caption("TV Remote")
 
             Text(headline)
                 .font(.system(size: 34, weight: .semibold))
@@ -19,17 +17,19 @@ struct ConnectView: View {
 
             Text(detail)
                 .font(.body)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.muted)
                 .fixedSize(horizontal: false, vertical: true)
 
             if tv.state == .connecting || tv.state == .waitingForApproval {
-                ProgressView().tint(.white)
+                ProgressView().tint(Theme.accent)
             } else {
                 TextField("192.168.1.20", text: $address)
                     .keyboardType(.numbersAndPunctuation)
-                    .font(.system(.title3, design: .monospaced))
+                    .font(Theme.mono(18))
+                    .tint(Theme.accent)
                     .padding(16)
-                    .background(.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 14))
+                    .background(Theme.key, in: RoundedRectangle(cornerRadius: 14))
+                    .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.hairline))
                     .focused($focused)
 
                 Button {
@@ -40,8 +40,8 @@ struct ConnectView: View {
                         .font(.headline)
                         .frame(maxWidth: .infinity)
                         .padding(16)
-                        .background(.white, in: RoundedRectangle(cornerRadius: 14))
-                        .foregroundStyle(.black)
+                        .background(Theme.accent, in: RoundedRectangle(cornerRadius: 14))
+                        .foregroundStyle(Theme.background)
                 }
                 .disabled(address.isEmpty)
             }
@@ -50,6 +50,8 @@ struct ConnectView: View {
             Spacer()
         }
         .padding(24)
+        .foregroundStyle(Theme.ink)
+        .background(Theme.background.ignoresSafeArea())
         .onAppear { address = tv.host ?? "" }
     }
 

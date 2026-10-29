@@ -22,6 +22,7 @@ targets:
         UILaunchScreen: {}
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         UIUserInterfaceStyle: Dark
+        UIAppFonts: [Doto.ttf, MartianMono.ttf]
         NSLocalNetworkUsageDescription: TV Remote talks to your LG TV over your home Wi-Fi.
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true

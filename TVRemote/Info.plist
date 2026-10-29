@@ -27,6 +27,11 @@
 	</dict>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>TV Remote talks to your LG TV over your home Wi-Fi.</string>
+	<key>UIAppFonts</key>
+	<array>
+		<string>Doto.ttf</string>
+		<string>MartianMono.ttf</string>
+	</array>
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>UISupportedInterfaceOrientations</key>

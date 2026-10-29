@@ -19,8 +19,23 @@ final class TVConnection: ObservableObject {
         let icon: URL?
     }
 
+    struct Input: Identifiable, Hashable {
+        let id: String
+        let label: String
+        let connected: Bool
+    }
+
+    /// The apps LG puts on its remote's shortcut keys, in that order.
+    var shortcuts: [App] {
+        let preferred = ["netflix", "amazon", "com.disney.disneyplus-prod", "youtube.leanback.v4"]
+        let picked = preferred.compactMap { id in apps.first { $0.id == id } }
+        let rest = apps.filter { !picked.contains($0) }
+        return Array((picked + rest).prefix(4))
+    }
+
     @Published private(set) var state: State = .idle
     @Published private(set) var apps: [App] = []
+    @Published private(set) var inputs: [Input] = []
     @Published private(set) var volume: Int?
     @Published private(set) var muted = false
     @Published private(set) var host: String? = UserDefaults.standard.string(forKey: "host")
@@ -49,8 +64,11 @@ final class TVConnection: ObservableObject {
     func demo() {
         host = "192.168.1.20"
         volume = 14
-        apps = ["Netflix", "YouTube", "Prime Video", "Disney+", "Apple TV", "Spotify"]
+        apps = ["Netflix", "Prime Video", "Disney+", "YouTube", "Apple TV", "Spotify", "LG Channels", "Twitch"]
             .map { App(id: $0, title: $0, icon: nil) }
+        inputs = [Input(id: "HDMI_1", label: "HDMI 1", connected: true),
+                  Input(id: "HDMI_2", label: "PlayStation 5", connected: true),
+                  Input(id: "HDMI_3", label: "HDMI 3", connected: false)]
         state = .connected
     }
     #endif
@@ -181,6 +199,7 @@ final class TVConnection: ObservableObject {
 
     private func didConnect() async {
         await openPointer()
+        await loadInputs()
         subscribe("ssap://audio/getVolume") { [weak self] payload in
             let status = payload["volumeStatus"] as? [String: Any] ?? payload
             if let level = status["volume"] as? Int { self?.volume = level }
@@ -263,9 +282,18 @@ final class TVConnection: ObservableObject {
         sendPointer("type:scroll\ndx:0\ndy:\(Int(dy.rounded()))")
     }
 
+    /// Names the TV's pointer socket understands, same as the physical remote's keys.
     enum Button: String {
         case up = "UP", down = "DOWN", left = "LEFT", right = "RIGHT"
-        case enter = "ENTER", back = "BACK", home = "HOME", menu = "MENU"
+        case enter = "ENTER", back = "BACK", exit = "EXIT", home = "HOME", settings = "MENU"
+        case channelUp = "CHANNELUP", channelDown = "CHANNELDOWN"
+        case play = "PLAY", pause = "PAUSE", rewind = "REWIND", fastForward = "FASTFORWARD"
+        case red = "RED", green = "GREEN", yellow = "YELLOW", blue = "BLUE"
+        case info = "INFO", guide = "GUIDE", captions = "CC", dash = "DASH"
+    }
+
+    func pressDigit(_ digit: Int) {
+        sendPointer("type:button\nname:\(digit)")
     }
 
     // MARK: Everything else
@@ -274,6 +302,19 @@ final class TVConnection: ObservableObject {
     func volumeDown() { run("ssap://audio/volumeDown") }
     func toggleMute() { run("ssap://audio/setMute", ["mute": !muted]) }
     func powerOff() { run("ssap://system/turnOff") }
+    func channelUp() { run("ssap://tv/channelUp") }
+    func channelDown() { run("ssap://tv/channelDown") }
+    func switchInput(_ input: Input) { run("ssap://tv/switchInput", ["inputId": input.id]) }
+
+    func loadInputs() async {
+        guard let payload = try? await request("ssap://tv/getExternalInputList"),
+              let devices = payload["devices"] as? [[String: Any]] else { return }
+        inputs = devices.compactMap { device in
+            guard let id = device["id"] as? String else { return nil }
+            return Input(id: id, label: device["label"] as? String ?? id,
+                         connected: device["connected"] as? Bool ?? false)
+        }
+    }
     func launch(_ app: App) { run("ssap://system.launcher/launch", ["id": app.id]) }
     func play() { run("ssap://media.controls/play") }
     func pause() { run("ssap://media.controls/pause") }

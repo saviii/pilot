@@ -7,19 +7,27 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		4B29C4F71A286AC63D4CE682 /* Doto.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 8F77CF002A63F8DDBE20F8AE /* Doto.ttf */; };
 		4E74EF105D27D5CBFE43E3B5 /* TVConnection.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3E0F19D6E88F4A6B7E0FB33 /* TVConnection.swift */; };
 		4F6F27EB18FD9B0FF713D7AB /* TVRemoteApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94A46E339FC62F654E112631 /* TVRemoteApp.swift */; };
+		568BBF769055F8A3F03818E4 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E8FAD32B58451258682B3FA /* Theme.swift */; };
 		A4CFB0114C3877128C44158F /* ConnectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C85F3C973FC57383F2229AF8 /* ConnectView.swift */; };
 		B184FDE3200BEC03F95B7BBE /* RemoteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F35B480751C62CB57DAA050 /* RemoteView.swift */; };
+		EB89AFC0F5EEF12F5646E4BA /* MartianMono.ttf in Resources */ = {isa = PBXBuildFile; fileRef = E2292D60B17F487AF0932F82 /* MartianMono.ttf */; };
+		F503EA355FA14715C6C82F7A /* Sheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8F8E21A290A84DE2791A6AF /* Sheets.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		3E8FAD32B58451258682B3FA /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		4A925A32C00EA5E0EA005803 /* TVRemote.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = TVRemote.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		5F35B480751C62CB57DAA050 /* RemoteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteView.swift; sourceTree = "<group>"; };
+		8F77CF002A63F8DDBE20F8AE /* Doto.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Doto.ttf; sourceTree = "<group>"; };
 		94A46E339FC62F654E112631 /* TVRemoteApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TVRemoteApp.swift; sourceTree = "<group>"; };
 		B3E0F19D6E88F4A6B7E0FB33 /* TVConnection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TVConnection.swift; sourceTree = "<group>"; };
 		C312E9C7FC9B612C7292F1D0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		C85F3C973FC57383F2229AF8 /* ConnectView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectView.swift; sourceTree = "<group>"; };
+		D8F8E21A290A84DE2791A6AF /* Sheets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sheets.swift; sourceTree = "<group>"; };
+		E2292D60B17F487AF0932F82 /* MartianMono.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = MartianMono.ttf; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -29,8 +37,11 @@
 				C85F3C973FC57383F2229AF8 /* ConnectView.swift */,
 				C312E9C7FC9B612C7292F1D0 /* Info.plist */,
 				5F35B480751C62CB57DAA050 /* RemoteView.swift */,
+				D8F8E21A290A84DE2791A6AF /* Sheets.swift */,
+				3E8FAD32B58451258682B3FA /* Theme.swift */,
 				B3E0F19D6E88F4A6B7E0FB33 /* TVConnection.swift */,
 				94A46E339FC62F654E112631 /* TVRemoteApp.swift */,
+				B710D2F616477B717F837483 /* Fonts */,
 			);
 			path = TVRemote;
 			sourceTree = "<group>";
@@ -51,6 +62,15 @@
 			);
 			sourceTree = "<group>";
 		};
+		B710D2F616477B717F837483 /* Fonts */ = {
+			isa = PBXGroup;
+			children = (
+				8F77CF002A63F8DDBE20F8AE /* Doto.ttf */,
+				E2292D60B17F487AF0932F82 /* MartianMono.ttf */,
+			);
+			path = Fonts;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -59,6 +79,7 @@
 			buildConfigurationList = 9A4F6DA99C43D02BF69E2558 /* Build configuration list for PBXNativeTarget "TVRemote" */;
 			buildPhases = (
 				418807493ADF74E17B20D9AC /* Sources */,
+				DC9C11B86D20C9CDE7658E29 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -101,6 +122,18 @@
 		};
 /* End PBXProject section */
 
+/* Begin PBXResourcesBuildPhase section */
+		DC9C11B86D20C9CDE7658E29 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4B29C4F71A286AC63D4CE682 /* Doto.ttf in Resources */,
+				EB89AFC0F5EEF12F5646E4BA /* MartianMono.ttf in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		418807493ADF74E17B20D9AC /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -108,8 +141,10 @@
 			files = (
 				A4CFB0114C3877128C44158F /* ConnectView.swift in Sources */,
 				B184FDE3200BEC03F95B7BBE /* RemoteView.swift in Sources */,
+				F503EA355FA14715C6C82F7A /* Sheets.swift in Sources */,
 				4E74EF105D27D5CBFE43E3B5 /* TVConnection.swift in Sources */,
 				4F6F27EB18FD9B0FF713D7AB /* TVRemoteApp.swift in Sources */,
+				568BBF769055F8A3F03818E4 /* Theme.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
