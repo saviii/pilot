@@ -17,6 +17,8 @@ final class Sonos: ObservableObject {
     private var player = UserDefaults.standard.string(forKey: "sonos.player")   // RINCON_… id
 
     @Published private(set) var onTV = true
+    /// Something is AirPlaying to it (this phone, most likely).
+    @Published private(set) var fromAirPlay = false
     @Published private(set) var playing = false
     @Published private(set) var track: Track?
     @Published var volume = 0
@@ -77,6 +79,7 @@ final class Sonos: ObservableObject {
         if let xml = try? await call(.transport, "GetPositionInfo") {
             let uri = Self.value("TrackURI", in: xml) ?? ""
             onTV = uri.hasPrefix("x-sonos-htastream:")
+            fromAirPlay = uri.hasPrefix("x-sonos-vli:")
             track = onTV ? nil : Self.track(from: Self.value("TrackMetaData", in: xml), host: host)
         }
         if let xml = try? await call(.rendering, "GetVolume", [("Channel", "Master")]),

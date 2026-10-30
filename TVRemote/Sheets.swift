@@ -1,3 +1,4 @@
+import AVKit
 import SwiftUI
 
 /// Typing on the TV. Most apps take text live through LG's keyboard; YouTube
@@ -681,6 +682,7 @@ struct SonosSheet: View {
                 }
 
                 nowPlaying
+                PlayFromPhone()
 
                 VStack(spacing: 0) {
                     toggle("Speech Enhancement", "Clearer dialogue", isOn: Binding(get: { sonos.speech }, set: sonos.setSpeech))
@@ -717,7 +719,7 @@ struct SonosSheet: View {
                     if let art = sonos.track?.art {
                         AsyncImage(url: art) { image in image.resizable().scaledToFill() } placeholder: { Color.clear }
                     } else {
-                        Image(systemName: sonos.onTV ? "tv" : "music.note")
+                        Image(systemName: sonos.onTV ? "tv" : sonos.fromAirPlay ? "iphone" : "music.note")
                             .font(.system(size: 20, weight: .medium))
                             .foregroundStyle(Theme.accent)
                     }
@@ -726,9 +728,9 @@ struct SonosSheet: View {
                 .clipShape(RoundedRectangle(cornerRadius: 12))
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(sonos.onTV ? "TV sound" : sonos.track?.title ?? "Nothing playing")
+                    Text(sonos.onTV ? "TV sound" : sonos.track?.title ?? (sonos.fromAirPlay ? "Your iPhone" : "Nothing playing"))
                         .font(.body.weight(.semibold)).lineLimit(1)
-                    Text(sonos.onTV ? "From the TV" : sonos.track?.artist ?? "Music")
+                    Text(sonos.onTV ? "From the TV" : sonos.fromAirPlay ? "From your iPhone · AirPlay" : sonos.track?.artist ?? "Music")
                         .font(.subheadline).foregroundStyle(Theme.ink.opacity(0.65)).lineLimit(1)
                 }
                 Spacer(minLength: 0)
@@ -927,5 +929,66 @@ struct DotTrack: View {
 
     private func lit(_ f: Double, at: Double, zero: Double) -> Bool {
         signed ? (f >= min(at, zero) - 0.001 && f <= max(at, zero) + 0.001 && abs(at - zero) > 0.001) : f <= at + 0.001
+    }
+}
+
+
+/// Sends this phone's audio to the Sonos (or back) through iOS's own AirPlay
+/// picker: the only thing allowed to move a phone's sound. One tap opens it.
+struct PlayFromPhone: View {
+    @EnvironmentObject private var sonos: Sonos
+    @State private var picker = AirPlayPicker()
+
+    var body: some View {
+        Button {
+            haptic()
+            picker.open()
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "airplay.audio")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(Theme.accent)
+                    .frame(width: 40, height: 40)
+                    .background(Theme.background, in: RoundedRectangle(cornerRadius: 11))
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(sonos.fromAirPlay ? "Playing from this phone" : "Play from this phone")
+                        .font(.body.weight(.semibold))
+                    Text(sonos.fromAirPlay ? "Pick iPhone to bring it back" : "Pick \(sonos.room) in the list")
+                        .font(.caption).foregroundStyle(Theme.muted)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Theme.muted)
+            }
+            .padding(14)
+            .background(Theme.key, in: RoundedRectangle(cornerRadius: 22))
+            .overlay(RoundedRectangle(cornerRadius: 22).stroke(Theme.hairline))
+        }
+        .buttonStyle(Pressable())
+        .foregroundStyle(Theme.ink)
+        .background(picker.view.frame(width: 1, height: 1).opacity(0.02))
+    }
+}
+
+/// iOS's AirPlay picker, kept off to the side; `open()` presses its button for you.
+@MainActor
+final class AirPlayPicker {
+    private let routes = AVRoutePickerView()
+
+    var view: some View { Holder(routes: routes) }
+
+    func open() {
+        guard let button = routes.subviews.compactMap({ $0 as? UIButton }).first else { return }
+        button.sendActions(for: .touchUpInside)
+    }
+
+    private struct Holder: UIViewRepresentable {
+        let routes: AVRoutePickerView
+        func makeUIView(context: Context) -> AVRoutePickerView {
+            routes.prioritizesVideoDevices = false
+            return routes
+        }
+        func updateUIView(_ view: AVRoutePickerView, context: Context) {}
     }
 }
