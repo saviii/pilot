@@ -2,7 +2,7 @@ import SwiftUI
 
 @main
 struct TVRemoteApp: App {
-    @StateObject private var tv = TVConnection()
+    @StateObject private var tv = TVConnection.shared
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage("appearance") private var appearance: Appearance = .system
 
@@ -21,8 +21,15 @@ struct TVRemoteApp: App {
                 #if DEBUG
                 if CommandLine.arguments.contains("-demo") { return tv.demo() }
                 #endif
-                if phase == .active { tv.reconnect() }
-                if phase == .background { tv.suspend() }
+                if phase == .active {
+                    LiveRemote.end()
+                    tv.reconnect()
+                }
+                if phase == .background {
+                    // Leave the Lock Screen panel behind, then let the socket go.
+                    LiveRemote.start(tv)
+                    tv.suspend()
+                }
             }
         }
     }

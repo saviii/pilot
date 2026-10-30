@@ -29,6 +29,8 @@
 	<string>Pilot talks to your LG TV over your home Wi-Fi.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Pilot saves TV screenshots to your photos.</string>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
 	<key>UIAppFonts</key>
 	<array>
 		<string>Doto.ttf</string>

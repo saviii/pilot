@@ -84,6 +84,19 @@ final class TVConnection: ObservableObject {
 
     var current: SavedTV? { saved.first { $0.host == host } }
 
+    /// One connection for the whole app, so Lock Screen buttons (which wake the app
+    /// in the background) use the same TV and pairing as the remote.
+    static let shared = TVConnection()
+
+    /// Waits for the TV to accept us, for Lock Screen buttons pressed while we were asleep.
+    func waitUntilConnected(seconds: Double) async -> Bool {
+        let deadline = Date().addingTimeInterval(seconds)
+        while state != .connected && Date() < deadline {
+            try? await Task.sleep(for: .milliseconds(50))
+        }
+        return state == .connected
+    }
+
     init() {
         // Phones paired before there was a TV list: keep that TV.
         if saved.isEmpty, let host, UserDefaults.standard.string(forKey: "key.\(host)") != nil {
@@ -354,6 +367,7 @@ final class TVConnection: ObservableObject {
         await loadInputs()
         subscribe("ssap://com.webos.applicationManager/getForegroundAppInfo") { [weak self] payload in
             self?.foreground = payload["appId"] as? String
+            if let self { LiveRemote.update(self) }
         }
         subscribe("ssap://com.webos.service.ime/registerRemoteKeyboard") { [weak self] payload in
             log("\(self?.foreground ?? "?") keyboard \(payload)", "ime")
@@ -370,6 +384,7 @@ final class TVConnection: ObservableObject {
             let status = payload["volumeStatus"] as? [String: Any] ?? payload
             if let level = status["volume"] as? Int { self?.volume = level }
             if let mute = (status["muteStatus"] ?? status["muted"]) as? Bool { self?.muted = mute }
+            if let self { LiveRemote.update(self) }
         }
         let launch = try? await request("ssap://com.webos.applicationManager/listLaunchPoints")
         dump(launch, "launchpoints")
@@ -475,7 +490,10 @@ final class TVConnection: ObservableObject {
     func volumeUp() { run("ssap://audio/volumeUp") }
     func volumeDown() { run("ssap://audio/volumeDown") }
     func toggleMute() { run("ssap://audio/setMute", ["mute": !muted]) }
-    func powerOff() { run("ssap://system/turnOff") }
+    func powerOff() {
+        run("ssap://system/turnOff")
+        LiveRemote.end()
+    }
     func switchInput(_ input: Input) { run("ssap://tv/switchInput", ["inputId": input.id]) }
 
     func loadInputs() async {

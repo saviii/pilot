@@ -9,17 +9,48 @@
 /* Begin PBXBuildFile section */
 		1102AFF235807E440C1A483E /* AirPointer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002A7702B7172415B2F0A3A5 /* AirPointer.swift */; };
 		4B29C4F71A286AC63D4CE682 /* Doto.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 8F77CF002A63F8DDBE20F8AE /* Doto.ttf */; };
+		4E12EAC44562D6DDDF303166 /* PilotActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = F078703D780A02C59610E63D /* PilotActivity.swift */; };
 		4E74EF105D27D5CBFE43E3B5 /* TVConnection.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3E0F19D6E88F4A6B7E0FB33 /* TVConnection.swift */; };
 		4F6F27EB18FD9B0FF713D7AB /* TVRemoteApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94A46E339FC62F654E112631 /* TVRemoteApp.swift */; };
 		568BBF769055F8A3F03818E4 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E8FAD32B58451258682B3FA /* Theme.swift */; };
 		57D747DA0BA1A1EE0F1F6239 /* TVFinder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8891D0439FD45DB92057E43D /* TVFinder.swift */; };
+		69AD879059E7E4E7A025559F /* MartianMono.ttf in Resources */ = {isa = PBXBuildFile; fileRef = E2292D60B17F487AF0932F82 /* MartianMono.ttf */; };
+		791ABA1C818156C7E76579B5 /* PilotWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1E9725E3C62FD3F5B8CAB7 /* PilotWidgets.swift */; };
 		7C0B16A58732E45AA992486C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 7710BFB4F02645288E5B22EE /* Assets.xcassets */; };
+		853150A911089C2E8FDEF45E /* LiveRemote.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1F9BDC6B4AE9C929C47CB86 /* LiveRemote.swift */; };
 		A4CFB0114C3877128C44158F /* ConnectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C85F3C973FC57383F2229AF8 /* ConnectView.swift */; };
 		A89A8EEFA3A6BDE1EDB9B93B /* VolumeButtons.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E6996BE3ECFE60032881D83 /* VolumeButtons.swift */; };
+		ADBA73C9928FF1FC93A1E76A /* PilotWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 78052858A15657E3BC7A7C2E /* PilotWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		B184FDE3200BEC03F95B7BBE /* RemoteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F35B480751C62CB57DAA050 /* RemoteView.swift */; };
+		E0039D2B0A7FF2380DD3310A /* Doto.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 8F77CF002A63F8DDBE20F8AE /* Doto.ttf */; };
 		EB89AFC0F5EEF12F5646E4BA /* MartianMono.ttf in Resources */ = {isa = PBXBuildFile; fileRef = E2292D60B17F487AF0932F82 /* MartianMono.ttf */; };
+		F40529BA7B795188480B905B /* PilotActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = F078703D780A02C59610E63D /* PilotActivity.swift */; };
 		F503EA355FA14715C6C82F7A /* Sheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8F8E21A290A84DE2791A6AF /* Sheets.swift */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		37BAA4646471D9B6E54A7777 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C6A84324EF563986EB3FF478 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 86D577B715FE89E0AE1D0833;
+			remoteInfo = PilotWidgets;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		0BF1B3B86AACD6773DCF7228 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				ADBA73C9928FF1FC93A1E76A /* PilotWidgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		002A7702B7172415B2F0A3A5 /* AirPointer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AirPointer.swift; sourceTree = "<group>"; };
@@ -28,14 +59,19 @@
 		4E6996BE3ECFE60032881D83 /* VolumeButtons.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VolumeButtons.swift; sourceTree = "<group>"; };
 		5F35B480751C62CB57DAA050 /* RemoteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteView.swift; sourceTree = "<group>"; };
 		7710BFB4F02645288E5B22EE /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		78052858A15657E3BC7A7C2E /* PilotWidgets.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = PilotWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		7A1E9725E3C62FD3F5B8CAB7 /* PilotWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PilotWidgets.swift; sourceTree = "<group>"; };
 		8891D0439FD45DB92057E43D /* TVFinder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TVFinder.swift; sourceTree = "<group>"; };
+		89C78CA5A27F1515F4F8B813 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		8F77CF002A63F8DDBE20F8AE /* Doto.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Doto.ttf; sourceTree = "<group>"; };
 		94A46E339FC62F654E112631 /* TVRemoteApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TVRemoteApp.swift; sourceTree = "<group>"; };
 		B3E0F19D6E88F4A6B7E0FB33 /* TVConnection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TVConnection.swift; sourceTree = "<group>"; };
+		C1F9BDC6B4AE9C929C47CB86 /* LiveRemote.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveRemote.swift; sourceTree = "<group>"; };
 		C312E9C7FC9B612C7292F1D0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		C85F3C973FC57383F2229AF8 /* ConnectView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectView.swift; sourceTree = "<group>"; };
 		D8F8E21A290A84DE2791A6AF /* Sheets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sheets.swift; sourceTree = "<group>"; };
 		E2292D60B17F487AF0932F82 /* MartianMono.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = MartianMono.ttf; sourceTree = "<group>"; };
+		F078703D780A02C59610E63D /* PilotActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PilotActivity.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -46,6 +82,7 @@
 				7710BFB4F02645288E5B22EE /* Assets.xcassets */,
 				C85F3C973FC57383F2229AF8 /* ConnectView.swift */,
 				C312E9C7FC9B612C7292F1D0 /* Info.plist */,
+				C1F9BDC6B4AE9C929C47CB86 /* LiveRemote.swift */,
 				5F35B480751C62CB57DAA050 /* RemoteView.swift */,
 				D8F8E21A290A84DE2791A6AF /* Sheets.swift */,
 				3E8FAD32B58451258682B3FA /* Theme.swift */,
@@ -58,9 +95,19 @@
 			path = TVRemote;
 			sourceTree = "<group>";
 		};
+		3330479804BC07B4E738C4C8 /* Widgets */ = {
+			isa = PBXGroup;
+			children = (
+				89C78CA5A27F1515F4F8B813 /* Info.plist */,
+				7A1E9725E3C62FD3F5B8CAB7 /* PilotWidgets.swift */,
+			);
+			path = Widgets;
+			sourceTree = "<group>";
+		};
 		809CE646BA20C16430D38ACF /* Products */ = {
 			isa = PBXGroup;
 			children = (
+				78052858A15657E3BC7A7C2E /* PilotWidgets.appex */,
 				4A925A32C00EA5E0EA005803 /* TVRemote.app */,
 			);
 			name = Products;
@@ -69,9 +116,19 @@
 		992F40EEB2C6F75A66329BF1 = {
 			isa = PBXGroup;
 			children = (
+				9D6CE2D2B88A8E07A438F33D /* Shared */,
 				094975E68A6DDA2334570010 /* TVRemote */,
+				3330479804BC07B4E738C4C8 /* Widgets */,
 				809CE646BA20C16430D38ACF /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		9D6CE2D2B88A8E07A438F33D /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				F078703D780A02C59610E63D /* PilotActivity.swift */,
+			);
+			path = Shared;
 			sourceTree = "<group>";
 		};
 		B710D2F616477B717F837483 /* Fonts */ = {
@@ -86,16 +143,36 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		86D577B715FE89E0AE1D0833 /* PilotWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 59B78A8B9FCF3CD11FE8D8E7 /* Build configuration list for PBXNativeTarget "PilotWidgets" */;
+			buildPhases = (
+				85932966ECD1C03F24059F99 /* Sources */,
+				22F3D0B20B05D84F1E65BF88 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = PilotWidgets;
+			packageProductDependencies = (
+			);
+			productName = PilotWidgets;
+			productReference = 78052858A15657E3BC7A7C2E /* PilotWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		CEB2E52F8C745D1CCEDABF57 /* TVRemote */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 9A4F6DA99C43D02BF69E2558 /* Build configuration list for PBXNativeTarget "TVRemote" */;
 			buildPhases = (
 				418807493ADF74E17B20D9AC /* Sources */,
 				DC9C11B86D20C9CDE7658E29 /* Resources */,
+				0BF1B3B86AACD6773DCF7228 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				B3935447EC44409DD6B46FBC /* PBXTargetDependency */,
 			);
 			name = TVRemote;
 			packageProductDependencies = (
@@ -113,6 +190,10 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
+					86D577B715FE89E0AE1D0833 = {
+						DevelopmentTeam = 7V37E9XS66;
+						ProvisioningStyle = Automatic;
+					};
 					CEB2E52F8C745D1CCEDABF57 = {
 						DevelopmentTeam = 7V37E9XS66;
 						ProvisioningStyle = Automatic;
@@ -134,11 +215,21 @@
 			projectRoot = "";
 			targets = (
 				CEB2E52F8C745D1CCEDABF57 /* TVRemote */,
+				86D577B715FE89E0AE1D0833 /* PilotWidgets */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		22F3D0B20B05D84F1E65BF88 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E0039D2B0A7FF2380DD3310A /* Doto.ttf in Resources */,
+				69AD879059E7E4E7A025559F /* MartianMono.ttf in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		DC9C11B86D20C9CDE7658E29 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -158,6 +249,8 @@
 			files = (
 				1102AFF235807E440C1A483E /* AirPointer.swift in Sources */,
 				A4CFB0114C3877128C44158F /* ConnectView.swift in Sources */,
+				853150A911089C2E8FDEF45E /* LiveRemote.swift in Sources */,
+				F40529BA7B795188480B905B /* PilotActivity.swift in Sources */,
 				B184FDE3200BEC03F95B7BBE /* RemoteView.swift in Sources */,
 				F503EA355FA14715C6C82F7A /* Sheets.swift in Sources */,
 				4E74EF105D27D5CBFE43E3B5 /* TVConnection.swift in Sources */,
@@ -168,7 +261,24 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		85932966ECD1C03F24059F99 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4E12EAC44562D6DDDF303166 /* PilotActivity.swift in Sources */,
+				791ABA1C818156C7E76579B5 /* PilotWidgets.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		B3935447EC44409DD6B46FBC /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 86D577B715FE89E0AE1D0833 /* PilotWidgets */;
+			targetProxy = 37BAA4646471D9B6E54A7777 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		2BEC5CDAED92E68D627E7844 /* Release */ = {
@@ -187,6 +297,7 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = fyi.savi.tvremote;
 				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) APP";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
 			};
@@ -252,6 +363,46 @@
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		8B74C43EB290822A9968DB5F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 7V37E9XS66;
+				INFOPLIST_FILE = Widgets/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = fyi.savi.tvremote.widgets;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		D6BCB0562D31F409F784B5FD /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 7V37E9XS66;
+				INFOPLIST_FILE = Widgets/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = fyi.savi.tvremote.widgets;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
 		};
@@ -327,6 +478,7 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = fyi.savi.tvremote;
 				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) APP";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
 			};
@@ -340,6 +492,15 @@
 			buildConfigurations = (
 				3052027F00F698B1534D75DE /* Debug */,
 				F121ED9ACF3CCC5354591688 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		59B78A8B9FCF3CD11FE8D8E7 /* Build configuration list for PBXNativeTarget "PilotWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D6BCB0562D31F409F784B5FD /* Debug */,
+				8B74C43EB290822A9968DB5F /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
