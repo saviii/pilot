@@ -575,7 +575,7 @@ private func dump(_ object: [String: Any]?, _ name: String) {
 }
 
 /// Appends a line to Documents/<name>.log, for debugging from the Mac.
-private func log(_ line: String, _ name: String) {
+func log(_ line: String, _ name: String) {
     guard let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
     let url = dir.appendingPathComponent("\(name).log")
     let entry = Data("\(Date().formatted(date: .omitted, time: .standard)) \(line)\n".utf8)
