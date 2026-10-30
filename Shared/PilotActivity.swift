@@ -25,6 +25,9 @@ enum TVAction: String, AppEnum {
 struct TVActionIntent: LiveActivityIntent {
     static var title: LocalizedStringResource = "Control the TV"
     static var isDiscoverable = false
+    /// Volume and pause are harmless: no unlocking needed on the Lock Screen.
+    static var authenticationPolicy: IntentAuthenticationPolicy = .alwaysAllowed
+    static var openAppWhenRun = false
 
     @Parameter(title: "Action") var action: TVAction
 
