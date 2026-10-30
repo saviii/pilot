@@ -8,9 +8,15 @@ final class TVFinder: ObservableObject {
     @Published private(set) var scanning = false
 
     func scan(with tv: TVConnection) async {
-        guard !scanning, let me = Self.localAddress() else { return }
+        guard !scanning else { return }
         scanning = true
         defer { scanning = false }
+        found = await Self.find(with: tv)
+    }
+
+    /// Every address on this phone's subnet that answers like an LG TV, in order.
+    static func find(with tv: TVConnection) async -> [String] {
+        guard let me = localAddress() else { return [] }
         let prefix = me.split(separator: ".").dropLast().joined(separator: ".")
         let hits = await withTaskGroup(of: String?.self) { group in
             for last in 1...254 {
@@ -22,7 +28,7 @@ final class TVFinder: ObservableObject {
             for await hit in group { if let hit { hits.append(hit) } }
             return hits
         }
-        found = hits.sorted { $0.split(separator: ".").last.flatMap { Int($0) } ?? 0 < $1.split(separator: ".").last.flatMap { Int($0) } ?? 0 }
+        return hits.sorted { $0.split(separator: ".").last.flatMap { Int($0) } ?? 0 < $1.split(separator: ".").last.flatMap { Int($0) } ?? 0 }
     }
 
     /// This phone's IPv4 address on Wi-Fi.

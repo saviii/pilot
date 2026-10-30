@@ -270,6 +270,11 @@ final class TVConnection: ObservableObject {
     }
 
     private func register() {
+        send(registration(key: host.flatMap { UserDefaults.standard.string(forKey: "key.\($0)") }))
+    }
+
+    /// The hello the TV expects: who we are, what we'd like to do, and our key if we have one.
+    private func registration(key: String?) -> [String: Any] {
         var payload: [String: Any] = [
             "forcePairing": false,
             "pairingType": "PROMPT",
@@ -287,10 +292,8 @@ final class TVConnection: ObservableObject {
                 ],
             ],
         ]
-        if let host, let key = UserDefaults.standard.string(forKey: "key.\(host)") {
-            payload["client-key"] = key
-        }
-        send(["type": "register", "id": "register", "payload": payload])
+        if let key { payload["client-key"] = key }
+        return ["type": "register", "id": "register", "payload": payload]
     }
 
     private func listen(on task: URLSessionWebSocketTask) {
@@ -328,6 +331,7 @@ final class TVConnection: ObservableObject {
     private func retryIfPaired() {
         unreachable = true
         guard isPaired, retries < 4 else { return }
+        if retries == 0, !waking { Task { await relocate() } }
         let delay = 1 << retries
         retries += 1
         Task { [weak self] in
@@ -515,6 +519,65 @@ final class TVConnection: ObservableObject {
     @Published private(set) var waking = false
     /// A try has failed since the TV last answered: it's off, or not on this Wi-Fi.
     @Published private(set) var unreachable = false
+
+    // MARK: Finding a TV that moved
+
+    private var relocating = false
+
+    /// The router can hand the TV a new address, and then the saved one stops answering.
+    /// Look over the Wi-Fi for a TV we don't know and offer it our pairing: only the TV we
+    /// paired with accepts it, and then the pairing, name and wake address move over.
+    private func relocate() async {
+        guard !relocating, let old = host, let key = UserDefaults.standard.string(forKey: "key.\(old)") else { return }
+        relocating = true
+        defer { relocating = false }
+        let known = Set(saved.map(\.host)).union([old])
+        for address in await TVFinder.find(with: self) where !known.contains(address) {
+            guard host == old, state != .connected else { return }
+            guard await accepts(address, key: key) else { continue }
+            log("\(old) moved to \(address)", "relocate")
+            let defaults = UserDefaults.standard
+            defaults.set(key, forKey: "key.\(address)")
+            defaults.removeObject(forKey: "key.\(old)")
+            if let mac = defaults.string(forKey: "mac.\(old)") {
+                defaults.set(mac, forKey: "mac.\(address)")
+                defaults.removeObject(forKey: "mac.\(old)")
+            }
+            save(saved.map { $0.host == old ? SavedTV(host: address, name: $0.name) : $0 })
+            connect(to: address)
+            return
+        }
+    }
+
+    /// Whether the TV at `address` already knows our pairing key. A TV that doesn't
+    /// would ask to pair, so we hang up as soon as it says so.
+    private func accepts(_ address: String, key: String) async -> Bool {
+        guard let url = URL(string: "wss://\(address):3001") else { return false }
+        let task = session.webSocketTask(with: url)
+        task.resume()
+        defer { task.cancel(with: .goingAway, reason: nil) }
+        guard let data = try? JSONSerialization.data(withJSONObject: registration(key: key)),
+              let text = String(data: data, encoding: .utf8) else { return false }
+        try? await task.send(.string(text))
+        return await withTaskGroup(of: Bool.self) { group in
+            group.addTask {
+                while let message = try? await task.receive() {
+                    guard case .string(let text) = message,
+                          let json = try? JSONSerialization.jsonObject(with: Data(text.utf8)) as? [String: Any]
+                    else { continue }
+                    if json["type"] as? String == "registered" { return true }
+                    if json["type"] as? String == "error" { return false }
+                    if (json["payload"] as? [String: Any])?["pairingType"] as? String == "PROMPT" { return false }
+                }
+                return false
+            }
+            group.addTask { try? await Task.sleep(for: .seconds(4)); return false }
+            let answer = await group.next() ?? false
+            group.cancelAll()
+            task.cancel(with: .goingAway, reason: nil)
+            return answer
+        }
+    }
 
     /// The TV can be woken: we've learned its network (MAC) address.
     var canWake: Bool { host.flatMap { UserDefaults.standard.string(forKey: "mac.\($0)") } != nil }
