@@ -22,6 +22,9 @@ final class Sonos: ObservableObject {
     @Published private(set) var playing = false
     @Published private(set) var track: Track?
     @Published var volume = 0
+    @Published private(set) var muted = false
+    /// The last read worked: it's on the Wi-Fi and answering.
+    @Published private(set) var reachable = false
     @Published private(set) var speech = false
     @Published private(set) var night = false
     @Published var sub = 0
@@ -83,7 +86,15 @@ final class Sonos: ObservableObject {
             track = onTV ? nil : Self.track(from: Self.value("TrackMetaData", in: xml), host: host)
         }
         if let xml = try? await call(.rendering, "GetVolume", [("Channel", "Master")]),
-           let level = Self.value("CurrentVolume", in: xml).flatMap(Int.init) { volume = level }
+           let level = Self.value("CurrentVolume", in: xml).flatMap(Int.init) {
+            volume = level
+            reachable = true
+        } else {
+            reachable = false
+        }
+        if let xml = try? await call(.rendering, "GetMute", [("Channel", "Master")]) {
+            muted = Self.value("CurrentMute", in: xml) == "1"
+        }
         guard Date() > quietUntil else { return }
         if let value = await eq("SpeechEnhanceEnabled") {
             speechType = "SpeechEnhanceEnabled"
@@ -113,6 +124,24 @@ final class Sonos: ObservableObject {
     func commitVolume() {
         quietUntil = Date().addingTimeInterval(3)
         Task { _ = try? await call(.rendering, "SetVolume", [("Channel", "Master"), ("DesiredVolume", "\(volume)")]) }
+    }
+
+    /// One step on the main volume bar or the phone's side buttons.
+    func nudge(_ delta: Int) {
+        volume = min(100, max(0, volume + delta))
+        commitVolume()
+    }
+
+    func setVolume(_ level: Int) {
+        volume = level
+        commitVolume()
+    }
+
+    func toggleMute() {
+        muted.toggle()
+        quietUntil = Date().addingTimeInterval(3)
+        let value = muted ? "1" : "0"
+        Task { _ = try? await call(.rendering, "SetMute", [("Channel", "Master"), ("DesiredMute", value)]) }
     }
 
     func playPause() {

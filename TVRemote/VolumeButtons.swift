@@ -4,21 +4,23 @@ import SwiftUI
 
 /// The iPhone's own volume buttons turn the TV up and down while Pilot is open.
 /// iOS doesn't hand apps the buttons directly, so we watch the phone's volume:
-/// each press nudges it, we send that nudge to the TV, then put the phone's
+/// each press nudges it, we pass that nudge on (TV or Sonos), then put the phone's
 /// volume back in the middle so the buttons never run out of room.
 @MainActor
 final class VolumeButtons: ObservableObject {
     private var observation: NSKeyValueObservation?
     private var resetting = false
     private let middle: Float = 0.5
-    private weak var tv: TVConnection?
+    private var up: () -> Void = {}
+    private var down: () -> Void = {}
     /// An off-screen system volume view: having one in the window hides iOS's volume
     /// overlay, and its slider is how apps set the phone's volume.
     fileprivate let view = MPVolumeView(frame: CGRect(x: 0, y: 0, width: 1, height: 1))
 
-    func start(_ tv: TVConnection) {
+    func start(up: @escaping () -> Void, down: @escaping () -> Void) {
+        self.up = up
+        self.down = down
         guard observation == nil else { return }
-        self.tv = tv
         let session = AVAudioSession.sharedInstance()
         // Ambient + mix: playing music on the phone carries on.
         try? session.setCategory(.ambient, options: [.mixWithOthers])
@@ -45,7 +47,7 @@ final class VolumeButtons: ObservableObject {
             return
         }
         guard new != old else { return }
-        if new > old { tv?.volumeUp() } else { tv?.volumeDown() }
+        if new > old { up() } else { down() }
         setPhoneVolume(middle)
     }
 

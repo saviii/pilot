@@ -49,13 +49,20 @@ struct RemoteView: View {
         .background(Theme.background.ignoresSafeArea())
         .environmentObject(pointer)
         .environmentObject(sonos)
-        .task { await sonos.findIfNeeded() }
+        .task {
+            await sonos.findIfNeeded()
+            // Keep the Sonos's level current, so the bar shows what you hear.
+            while !Task.isCancelled {
+                await sonos.refresh()
+                try? await Task.sleep(for: .seconds(3))
+            }
+        }
         // The phone's side buttons turn the TV up and down while Pilot is open.
         .background(HiddenVolumeView(buttons: buttons).frame(width: 1, height: 1).offset(x: -200))
-        .onAppear { buttons.start(tv) }
+        .onAppear { buttons.start(up: { Loudness.up(tv, sonos) }, down: { Loudness.down(tv, sonos) }) }
         .onDisappear { buttons.stop() }
         .onChange(of: scenePhase) { _, phase in
-            if phase == .active { buttons.start(tv) } else { buttons.stop() }
+            if phase == .active { buttons.start(up: { Loudness.up(tv, sonos) }, down: { Loudness.down(tv, sonos) }) } else { buttons.stop() }
         }
         // The phone's keyboard covers the remote rather than squashing it.
         .ignoresSafeArea(.keyboard)
@@ -523,11 +530,11 @@ private struct VolumeBar: View {
         HStack(spacing: 4) {
             step("minus", shape: UnevenRoundedRectangle(topLeadingRadius: 32, bottomLeadingRadius: 32,
                                                        bottomTrailingRadius: 8, topTrailingRadius: 8),
-                 action: tv.volumeDown)
+                 action: { Loudness.down(tv, sonos) })
             VolumeLevel()
             step("plus", shape: UnevenRoundedRectangle(topLeadingRadius: 8, bottomLeadingRadius: 8,
                                                       bottomTrailingRadius: 32, topTrailingRadius: 32),
-                 action: tv.volumeUp)
+                 action: { Loudness.up(tv, sonos) })
             // The Sonos's own controls, once Pilot has found one.
             if sonos.host != nil {
                 Key(shape: Circle(), action: { sheet = .sonos }) {
@@ -551,24 +558,27 @@ private struct VolumeBar: View {
 
 private struct VolumeLevel: View {
     @EnvironmentObject private var tv: TVConnection
+    @EnvironmentObject private var sonos: Sonos
     @State private var start: Int?
     @State private var pressed = false
     private let ticks = UISelectionFeedbackGenerator()
     private let shape = RoundedRectangle(cornerRadius: 8)
 
     var body: some View {
-        let level = tv.volume ?? 0
+        let volume = Loudness.level(tv, sonos)
+        let muted = Loudness.muted(tv, sonos)
+        let level = volume ?? 0
         VStack(spacing: 7) {
             HStack(spacing: 8) {
-                if tv.muted {
+                if muted {
                     Image(systemName: "speaker.slash.fill")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(Theme.accent)
                         .transition(.opacity)
                 }
-                Text(tv.volume.map { String(format: "%02d", $0) } ?? "--")
+                Text(volume.map { String(format: "%02d", $0) } ?? "--")
                     .font(Theme.dot(30))
-                    .foregroundStyle(tv.muted ? Theme.muted : Theme.accent)
+                    .foregroundStyle(muted ? Theme.muted : Theme.accent)
                     .monospacedDigit()
                     .contentTransition(.numericText())
             }
@@ -576,13 +586,13 @@ private struct VolumeLevel: View {
             HStack(spacing: 4) {
                 ForEach(0..<14, id: \.self) { i in
                     Circle()
-                        .fill(!tv.muted && Double(i) < (Double(level) / 100 * 14).rounded(.up) ? Theme.accent : Theme.muted.opacity(0.3))
+                        .fill(!muted && Double(i) < (Double(level) / 100 * 14).rounded(.up) ? Theme.accent : Theme.muted.opacity(0.3))
                         .frame(width: 4, height: 4)
                 }
             }
         }
-        .animation(.easeOut(duration: 0.15), value: tv.volume)
-        .animation(.easeOut(duration: 0.15), value: tv.muted)
+        .animation(.easeOut(duration: 0.15), value: volume)
+        .animation(.easeOut(duration: 0.15), value: muted)
         .frame(maxWidth: .infinity)
         .frame(height: 64)
         .background(pressed ? Theme.keyPressed : Theme.key, in: shape)
@@ -593,12 +603,12 @@ private struct VolumeLevel: View {
             DragGesture(minimumDistance: 0)
                 .onChanged { value in
                     pressed = true
-                    if start == nil { start = tv.volume ?? 0; ticks.prepare() }
+                    if start == nil { start = Loudness.level(tv, sonos) ?? 0; ticks.prepare() }
                     guard let start, abs(value.translation.width) > 6 else { return }
                     let target = min(100, max(0, start + Int(value.translation.width / 6)))
-                    if target != tv.volume {
+                    if target != Loudness.level(tv, sonos) {
                         ticks.selectionChanged()
-                        tv.setVolume(target)
+                        Loudness.set(target, tv, sonos)
                     }
                 }
                 .onEnded { value in
@@ -606,15 +616,15 @@ private struct VolumeLevel: View {
                     start = nil
                     if hypot(value.translation.width, value.translation.height) < 6 {
                         haptic()
-                        tv.toggleMute()
+                        Loudness.toggleMute(tv, sonos)
                     }
                 }
         )
         .accessibilityElement()
         .accessibilityLabel("Volume")
-        .accessibilityValue(tv.muted ? "Muted" : "\(level)")
+        .accessibilityValue(muted ? "Muted" : "\(level)")
         .accessibilityAdjustableAction { direction in
-            if direction == .increment { tv.volumeUp() } else { tv.volumeDown() }
+            if direction == .increment { Loudness.up(tv, sonos) } else { Loudness.down(tv, sonos) }
         }
     }
 }

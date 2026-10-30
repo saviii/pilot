@@ -23,6 +23,7 @@
 		A89A8EEFA3A6BDE1EDB9B93B /* VolumeButtons.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E6996BE3ECFE60032881D83 /* VolumeButtons.swift */; };
 		ADBA73C9928FF1FC93A1E76A /* PilotWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 78052858A15657E3BC7A7C2E /* PilotWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		B184FDE3200BEC03F95B7BBE /* RemoteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F35B480751C62CB57DAA050 /* RemoteView.swift */; };
+		BB0A2F717760B95B8F429594 /* Loudness.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0BDAD959AA84E8298015413E /* Loudness.swift */; };
 		E0039D2B0A7FF2380DD3310A /* Doto.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 8F77CF002A63F8DDBE20F8AE /* Doto.ttf */; };
 		EB89AFC0F5EEF12F5646E4BA /* MartianMono.ttf in Resources */ = {isa = PBXBuildFile; fileRef = E2292D60B17F487AF0932F82 /* MartianMono.ttf */; };
 		F40529BA7B795188480B905B /* PilotActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = F078703D780A02C59610E63D /* PilotActivity.swift */; };
@@ -55,6 +56,7 @@
 
 /* Begin PBXFileReference section */
 		002A7702B7172415B2F0A3A5 /* AirPointer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AirPointer.swift; sourceTree = "<group>"; };
+		0BDAD959AA84E8298015413E /* Loudness.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Loudness.swift; sourceTree = "<group>"; };
 		3E8FAD32B58451258682B3FA /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		4A925A32C00EA5E0EA005803 /* TVRemote.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = TVRemote.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		4E6996BE3ECFE60032881D83 /* VolumeButtons.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VolumeButtons.swift; sourceTree = "<group>"; };
@@ -85,6 +87,7 @@
 				C85F3C973FC57383F2229AF8 /* ConnectView.swift */,
 				C312E9C7FC9B612C7292F1D0 /* Info.plist */,
 				C1F9BDC6B4AE9C929C47CB86 /* LiveRemote.swift */,
+				0BDAD959AA84E8298015413E /* Loudness.swift */,
 				5F35B480751C62CB57DAA050 /* RemoteView.swift */,
 				D8F8E21A290A84DE2791A6AF /* Sheets.swift */,
 				53B40821D243D5E1AC89BC46 /* Sonos.swift */,
@@ -253,6 +256,7 @@
 				1102AFF235807E440C1A483E /* AirPointer.swift in Sources */,
 				A4CFB0114C3877128C44158F /* ConnectView.swift in Sources */,
 				853150A911089C2E8FDEF45E /* LiveRemote.swift in Sources */,
+				BB0A2F717760B95B8F429594 /* Loudness.swift in Sources */,
 				F40529BA7B795188480B905B /* PilotActivity.swift in Sources */,
 				B184FDE3200BEC03F95B7BBE /* RemoteView.swift in Sources */,
 				F503EA355FA14715C6C82F7A /* Sheets.swift in Sources */,
