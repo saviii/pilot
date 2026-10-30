@@ -58,7 +58,7 @@ struct RemoteView: View {
         .sheet(item: $sheet) { kind in
             Group {
                 switch kind {
-                case .keyboard: KeyboardSheet().presentationDetents([.height(220)])
+                case .keyboard: KeyboardSheet().presentationDetents([.height(tv.foregroundInput == nil ? 220 : 330)])
                 case .inputs: InputsSheet().presentationDetents([.medium])
                 case .apps: AppsSheet().presentationDetents([.large])
                 case .tvs: TVsSheet().presentationDetents([.height(CGFloat(170 + tv.saved.count * 100))])

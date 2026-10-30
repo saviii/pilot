@@ -27,7 +27,11 @@ final class TVConnection: ObservableObject {
         let connected: Bool
         var port: Int? = nil
         var signal = false
+        var appId: String? = nil
     }
+
+    /// The HDMI input on screen (the PS5, say), if that's what's showing.
+    var foregroundInput: Input? { inputs.first { $0.appId != nil && $0.appId == foreground } }
 
     // MARK: Icons
 
@@ -149,12 +153,12 @@ final class TVConnection: ObservableObject {
     func demo() {
         host = "192.168.1.20"
         volume = 14
-        foreground = "Netflix"
+        foreground = CommandLine.arguments.contains("-ps5") ? "com.webos.app.hdmi2" : "Netflix"
         saved = [SavedTV(host: "192.168.1.20", name: "Living room"), SavedTV(host: "192.168.1.31", name: "Upstairs")]
         apps = ["Netflix", "Prime Video", "Disney+", "YouTube", "Apple TV", "Spotify", "LG Channels", "Twitch"]
             .map { App(id: $0, title: $0, icon: nil) }
         inputs = [Input(id: "HDMI_1", label: "HDMI 1", connected: true),
-                  Input(id: "HDMI_2", label: "PlayStation 5", connected: true),
+                  Input(id: "HDMI_2", label: "PlayStation 5", connected: true, port: 2, appId: "com.webos.app.hdmi2"),
                   Input(id: "HDMI_3", label: "HDMI 3", connected: false)]
         state = .connected
     }
@@ -486,7 +490,8 @@ final class TVConnection: ObservableObject {
             return Input(id: id, label: device["label"] as? String ?? id,
                          connected: device["connected"] as? Bool ?? false,
                          port: device["port"] as? Int,
-                         signal: device["hdmiSignalExist"] as? Bool ?? false)
+                         signal: device["hdmiSignalExist"] as? Bool ?? false,
+                         appId: device["appId"] as? String)
         }
     }
     func launch(_ app: App) { run("ssap://system.launcher/launch", ["id": app.id]) }
@@ -505,9 +510,14 @@ final class TVConnection: ObservableObject {
 
     func searchYouTube(_ query: String) {
         var parts = URLComponents()
-        parts.queryItems = [URLQueryItem(name: "q", value: query)]
-        let target = "https://www.youtube.com/tv#/search?\(parts.percentEncodedQuery ?? "")"
+        parts.queryItems = [URLQueryItem(name: "launch", value: "voice"), URLQueryItem(name: "vq", value: query)]
+        let target = "https://www.youtube.com/tv?\(parts.percentEncodedQuery ?? "")"
         Task {
+            // An app only reads its launch link when it starts fresh, so close YouTube first.
+            if foreground == Self.youtube {
+                _ = try? await request("ssap://system.launcher/close", ["id": Self.youtube])
+                try? await Task.sleep(for: .milliseconds(900))
+            }
             let reply = try? await request("ssap://system.launcher/launch", ["id": Self.youtube, "params": ["contentTarget": target]])
             log("youtube search \(target) → \(reply ?? [:])", "ime")
         }

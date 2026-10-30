@@ -2,14 +2,20 @@ import SwiftUI
 
 /// Typing on the TV. Most apps take text live through LG's keyboard; YouTube
 /// draws its own and ignores it, so there the field becomes a YouTube search.
+/// On an HDMI input (the PS5) text can't get through at all: there it's a YouTube
+/// search you play on the console (by casting from your phone) or on the TV.
 struct KeyboardSheet: View {
     @EnvironmentObject private var tv: TVConnection
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
     @State private var text = ""
     @FocusState private var focused: Bool
     @AppStorage("recentSearches") private var recentRaw = ""
 
-    private var youtube: Bool { tv.foreground == TVConnection.youtube }
+    /// An HDMI input is on screen: text can't reach it, only the TV's own apps.
+    private var input: TVConnection.Input? { tv.foregroundInput }
+    /// Search goes to the TV's YouTube: when it's on screen, or when you choose it over an input.
+    private var youtube: Bool { tv.foreground == TVConnection.youtube || input != nil }
     private var recents: [String] { recentRaw.split(separator: "\n").map(String.init) }
 
     var body: some View {
@@ -18,10 +24,16 @@ struct KeyboardSheet: View {
                 if let app = tv.foregroundApp {
                     AppIcon(app: app, radius: 7, inset: 2).frame(width: 32, height: 32)
                 }
+                if let input {
+                    Image(systemName: input.label.contains("PlayStation") ? "gamecontroller.fill" : "cable.connector")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(Theme.accent)
+                        .frame(width: 32, height: 32)
+                        .background(Theme.key, in: RoundedRectangle(cornerRadius: 7))
+                }
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(youtube ? "Search YouTube" : "Type on \(tv.current?.name ?? "the TV")")
-                        .font(.headline)
-                    Caption(youtube ? "Results open when you press search" : "Shows on the TV as you type")
+                    Text(title).font(.headline)
+                    Caption(subtitle)
                 }
                 Spacer()
                 Button("Done") { dismiss() }
@@ -29,18 +41,25 @@ struct KeyboardSheet: View {
                     .foregroundStyle(Theme.accent)
             }
 
+            if let input {
+                Text("Pilot can't type into the \(input.label). Search YouTube here and cast it from your phone, or open it on the TV's own YouTube.")
+                    .font(.subheadline)
+                    .foregroundStyle(Theme.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
             HStack(spacing: 10) {
                 Image(systemName: youtube ? "magnifyingglass" : "keyboard")
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(Theme.muted)
-                TextField(youtube ? "Search" : "Type", text: $text)
+                TextField(youtube ? "Search YouTube" : "Type", text: $text)
                     .font(.title3)
                     .tint(Theme.accent)
                     .focused($focused)
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(.never)
                     .submitLabel(youtube ? .search : .send)
-                    .onSubmit(submit)
+                    .onSubmit { submit() }
                 if !text.isEmpty {
                     Button {
                         if !youtube { tv.deleteCharacters(text.count) }
@@ -71,6 +90,20 @@ struct KeyboardSheet: View {
                 }
             }
 
+            if let input {
+                HStack(spacing: 10) {
+                    destination(input.label, symbol: input.label.contains("PlayStation") ? "gamecontroller.fill" : "cable.connector", primary: true) {
+                        submit()
+                    }
+                    destination("The TV", symbol: "tv", primary: false) {
+                        submit(onTV: true)
+                    }
+                }
+                .disabled(text.trimmingCharacters(in: .whitespaces).isEmpty)
+                .opacity(text.trimmingCharacters(in: .whitespaces).isEmpty ? 0.5 : 1)
+                .animation(.easeOut(duration: 0.15), value: text.isEmpty)
+            }
+
             if !recents.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
@@ -98,14 +131,51 @@ struct KeyboardSheet: View {
         }
         .padding(24)
         .foregroundStyle(Theme.ink)
-        .onAppear { focused = true }
+        // On an input you're probably not typing, so don't throw the keyboard up.
+        .onAppear { focused = input == nil }
     }
 
-    private func submit() {
+    private var title: String {
+        if let input { return "Typing on \(input.label)" }
+        return youtube ? "Search YouTube" : "Type on \(tv.current?.name ?? "the TV")"
+    }
+
+    private var subtitle: String {
+        if let input { return input.port.map { "HDMI \($0)" } ?? "Input" }
+        return youtube ? "Results open when you press search" : "Shows on the TV as you type"
+    }
+
+    /// "Play on" choice for an input: the console (primary) or the TV's own YouTube.
+    private func destination(_ title: String, symbol: String, primary: Bool, _ run: @escaping () -> Void) -> some View {
+        Button(action: run) {
+            HStack(spacing: 8) {
+                Image(systemName: symbol).font(.system(size: 13, weight: .semibold))
+                Text(title).font(.subheadline.weight(.semibold)).lineLimit(1)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 48)
+            .foregroundStyle(primary ? Theme.background : Theme.ink)
+            .background(primary ? Theme.accent : Theme.key, in: RoundedRectangle(cornerRadius: 14))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(primary ? .clear : Theme.hairline))
+        }
+        .buttonStyle(Pressable())
+    }
+
+    /// On an input, search opens YouTube on this phone (cast it to the console from
+    /// there) unless you chose the TV. Otherwise it goes to the TV.
+    private func submit(onTV: Bool = false) {
         let query = text.trimmingCharacters(in: .whitespaces)
         guard !query.isEmpty else { return }
         haptic(.medium)
-        if youtube { tv.searchYouTube(query) } else { tv.sendEnter() }
+        if input != nil && !onTV {
+            var parts = URLComponents(string: "https://www.youtube.com/results")!
+            parts.queryItems = [URLQueryItem(name: "search_query", value: query)]
+            if let url = parts.url { openURL(url) }
+        } else if youtube {
+            tv.searchYouTube(query)
+        } else {
+            tv.sendEnter()
+        }
         recentRaw = ([query] + recents.filter { $0 != query }).prefix(6).joined(separator: "\n")
         dismiss()
     }
