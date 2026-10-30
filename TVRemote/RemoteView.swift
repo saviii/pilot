@@ -107,31 +107,54 @@ private struct AppKeys: View {
     }
 
     var body: some View {
-        HStack(spacing: 8) {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(pinned) { app in
-                        Button {
-                            haptic()
-                            tv.launch(app)
-                        } label: {
-                            AppIcon(app: app, inset: 4).frame(width: 66, height: 50)
-                        }
-                        .buttonStyle(KeyStyle(shape: RoundedRectangle(cornerRadius: 14)))
-                    }
-                }
-                .padding(.vertical, 2)
-            }
-            .scrollClipDisabled()
+        GeometryReader { geo in
+            // Exactly five tiles fit the frame; a sixth peeks in from the edge.
+            let gap: CGFloat = 8
+            let tile = (geo.size.width - gap * 4) / 5
 
-            Key(shape: RoundedRectangle(cornerRadius: 14), action: { sheet = .apps }) {
-                Image(systemName: "plus")
-                    .font(.system(size: 18, weight: .semibold))
-                    .frame(width: 50, height: 50)
+            ScrollViewReader { reader in
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: gap) {
+                        ForEach(pinned) { app in
+                            Button {
+                                haptic()
+                                tv.launch(app)
+                            } label: {
+                                AppIcon(app: app, inset: 4).frame(width: tile, height: 50)
+                            }
+                            .buttonStyle(KeyStyle(shape: RoundedRectangle(cornerRadius: 14)))
+                        }
+                        add(width: pinned.isEmpty ? geo.size.width : tile)
+                            .id("add")
+                    }
+                    .padding(.vertical, 3)
+                }
+                // Scroll edge to edge, but line the tiles up with the page margin.
+                .contentMargins(.horizontal, 24, for: .scrollContent)
+                .padding(.horizontal, -24)
+                .onChange(of: pins.ids) { old, new in
+                    guard new.count > old.count else { return }
+                    withAnimation(.easeInOut(duration: 0.3)) { reader.scrollTo("add", anchor: .trailing) }
+                }
             }
         }
+        .frame(height: 56)
         .onAppear { pins.seedIfNeeded(with: tv.shortcuts) }
         .onChange(of: tv.apps) { pins.seedIfNeeded(with: tv.shortcuts) }
+    }
+
+    private func add(width: CGFloat) -> some View {
+        Button {
+            haptic()
+            sheet = .apps
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "plus").font(.system(size: 18, weight: .semibold))
+                if pinned.isEmpty { Text("Add apps").font(Theme.mono(12)) }
+            }
+            .frame(width: width, height: 50)
+        }
+        .buttonStyle(KeyStyle(shape: RoundedRectangle(cornerRadius: 14)))
     }
 }
 
