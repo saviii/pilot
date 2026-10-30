@@ -81,60 +81,6 @@ struct InputsSheet: View {
     }
 }
 
-/// The rarely used keys: numbers, the four color keys, guide and info.
-struct NumberPadSheet: View {
-    @EnvironmentObject private var tv: TVConnection
-
-    private let columns = Array(repeating: GridItem(.flexible(), spacing: 10), count: 3)
-
-    var body: some View {
-        VStack(spacing: 18) {
-            LazyVGrid(columns: columns, spacing: 10) {
-                ForEach([1, 2, 3, 4, 5, 6, 7, 8, 9], id: \.self) { digit($0) }
-                text("Guide") { tv.press(.guide) }
-                digit(0)
-                text("Info") { tv.press(.info) }
-            }
-
-            HStack(spacing: 10) {
-                color(.red, Color(red: 0.93, green: 0.27, blue: 0.24))
-                color(.green, Color(red: 0.30, green: 0.75, blue: 0.40))
-                color(.yellow, Color(red: 0.98, green: 0.80, blue: 0.25))
-                color(.blue, Color(red: 0.30, green: 0.55, blue: 0.95))
-            }
-        }
-        .padding(24)
-        .padding(.top, 12)
-    }
-
-    private func digit(_ n: Int) -> some View {
-        Key(shape: RoundedRectangle(cornerRadius: 16), action: { tv.pressDigit(n) }) {
-            Text("\(n)")
-                .font(Theme.dot(30))
-                .frame(maxWidth: .infinity)
-                .frame(height: 60)
-        }
-    }
-
-    private func text(_ label: String, _ action: @escaping () -> Void) -> some View {
-        Key(shape: RoundedRectangle(cornerRadius: 16), action: action) {
-            Text(label.uppercased())
-                .font(Theme.mono(10))
-                .frame(maxWidth: .infinity)
-                .frame(height: 60)
-        }
-    }
-
-    private func color(_ button: TVConnection.Button, _ fill: Color) -> some View {
-        Key(shape: Capsule(), action: { tv.press(button) }) {
-            Capsule().fill(fill)
-                .frame(width: 26, height: 6)
-                .frame(maxWidth: .infinity)
-                .frame(height: 44)
-        }
-    }
-}
-
 /// Every app on the TV. Tap one to put it in the top strip; tap again to take it out.
 struct AppsSheet: View {
     @EnvironmentObject private var tv: TVConnection

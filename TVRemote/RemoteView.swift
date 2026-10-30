@@ -1,8 +1,8 @@
 import SwiftUI
 
-/// Laid out like LG's own remote, top to bottom: power and inputs, app
-/// shortcut keys, the click wheel, back and home, volume, then playback.
-/// No channel keys: everything here is apps, so up and down is the wheel's job.
+/// Laid out like LG's own remote, top to bottom: what's on, inputs and power,
+/// your apps, the click wheel, back and home, volume, then playback.
+/// No channel or number keys: everything here is apps, so up and down is the wheel's job.
 struct RemoteView: View {
     @EnvironmentObject private var tv: TVConnection
     @State private var pointer = false
@@ -35,7 +35,7 @@ struct RemoteView: View {
             Spacer(minLength: 16)
             VolumeBar()
             Spacer(minLength: 16)
-            Playback(sheet: $sheet)
+            Playback()
         }
         .padding(.horizontal, 24)
         .padding(.top, 8)
@@ -49,7 +49,6 @@ struct RemoteView: View {
                 switch kind {
                 case .keyboard: KeyboardSheet().presentationDetents([.height(170)])
                 case .inputs: InputsSheet().presentationDetents([.medium])
-                case .numbers: NumberPadSheet().presentationDetents([.height(470)])
                 case .apps: AppsSheet().presentationDetents([.medium, .large])
                 }
             }
@@ -61,7 +60,7 @@ struct RemoteView: View {
 }
 
 enum Sheet: String, Identifiable {
-    case keyboard, inputs, numbers, apps
+    case keyboard, inputs, apps
     var id: String { rawValue }
 }
 
@@ -82,19 +81,26 @@ private struct TopBar: View {
                 Button("Forget this TV", role: .destructive) { tv.forget() }
             } label: {
                 HStack(spacing: 8) {
-                    // Orange when connected; faint while it reconnects.
-                    Circle()
-                        .fill(tv.state == .connected ? Theme.accent : Theme.muted)
-                        .frame(width: 6, height: 6)
-                        .animation(.easeOut(duration: 0.2), value: tv.state == .connected)
-                    Caption("LG · \(tv.host ?? "")")
+                    if tv.state == .connected, let app = tv.foregroundApp {
+                        // What's on the TV, in its own colors.
+                        AppIcon(app: app, radius: 5, inset: 1).frame(width: 22, height: 22)
+                        Caption(app.title)
+                    } else {
+                        // Orange when connected; faint while it reconnects.
+                        Circle()
+                            .fill(tv.state == .connected ? Theme.accent : Theme.muted)
+                            .frame(width: 6, height: 6)
+                        Caption("LG · \(tv.host ?? "")")
+                    }
                 }
                 .frame(height: 44)
+                .animation(.easeOut(duration: 0.2), value: tv.foreground)
+                .animation(.easeOut(duration: 0.2), value: tv.state == .connected)
             }
             Spacer()
             IconKey(symbol: "cable.connector", size: 44) { sheet = .inputs }
             IconKey(symbol: "gearshape.fill", size: 44) { tv.press(.settings) }
-            IconKey(symbol: "power", size: 44, tint: Theme.accent) { tv.powerOff() }
+            PowerKey()
         }
     }
 }
@@ -221,9 +227,13 @@ private struct ClickWheel: View {
                 Circle().fill(Theme.key)
                 Circle().stroke(Theme.hairline, lineWidth: 1)
 
-                if let active, active != .ok {
-                    Wedge(zone: active, inner: inner)
-                        .fill(Theme.keyPressed)
+                // The ring is a dot matrix, like the icon; the quarter under your thumb lights up.
+                let pitch = side / 21
+                DotRing(inner: inner + pitch, outer: radius - pitch * 0.6, pitch: pitch, marker: radius * 0.7, color: Theme.muted.opacity(0.24))
+                ForEach([Zone.up, .down, .left, .right], id: \.self) { zone in
+                    DotRing(inner: inner + pitch, outer: radius - pitch * 0.6, pitch: pitch, marker: radius * 0.7, color: Theme.accent)
+                        .mask(Wedge(zone: zone, inner: inner))
+                        .opacity(active == zone ? 1 : 0)
                 }
 
                 marker("chevron.up", .up).offset(y: -radius * 0.7)
@@ -258,7 +268,7 @@ private struct ClickWheel: View {
                     .onEnded { _ in
                         repeating?.cancel()
                         if active == .ok {
-                            haptic()
+                            haptic(.medium)
                             tv.press(.enter)
                         }
                         active = nil
@@ -270,8 +280,8 @@ private struct ClickWheel: View {
 
     private func marker(_ symbol: String, _ zone: Zone) -> some View {
         Image(systemName: symbol)
-            .font(.system(size: 18, weight: .bold))
-            .foregroundStyle(active == zone ? Theme.accent : Theme.muted)
+            .font(.system(size: 16, weight: .bold))
+            .foregroundStyle(active == zone ? Theme.accent : Theme.ink.opacity(0.7))
     }
 
     private func zone(at point: CGPoint, radius: CGFloat, inner: CGFloat) -> Zone? {
@@ -291,16 +301,49 @@ private struct ClickWheel: View {
         case .right: .right
         case .ok: .enter
         }
-        haptic()
+        haptic(.light)
         tv.press(button)
         repeating = Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(400))
             while !Task.isCancelled {
-                haptic()
+                haptic(.soft)
                 tv.press(button)
                 try? await Task.sleep(for: .milliseconds(120))
             }
         }
+    }
+}
+
+/// Dots on a square grid centered on the wheel, kept to the ring between two radii.
+private struct DotRing: View {
+    let inner: CGFloat
+    let outer: CGFloat
+    let pitch: CGFloat
+    /// Distance of the four arrows from the center; the dots leave room around them.
+    let marker: CGFloat
+    let color: Color
+
+    var body: some View {
+        Canvas { context, size in
+            let center = CGPoint(x: size.width / 2, y: size.height / 2)
+            let steps = Int(outer / pitch) + 1
+            let dot = pitch * 0.18
+            var path = Path()
+            for row in -steps...steps {
+                for col in -steps...steps {
+                    let x = CGFloat(col) * pitch, y = CGFloat(row) * pitch
+                    let distance = hypot(x, y)
+                    guard distance > inner, distance < outer else { continue }
+                    let nearArrow = [CGPoint(x: 0, y: marker), CGPoint(x: 0, y: -marker),
+                                     CGPoint(x: marker, y: 0), CGPoint(x: -marker, y: 0)]
+                        .contains { hypot(x - $0.x, y - $0.y) < pitch * 1.3 }
+                    if nearArrow { continue }
+                    path.addEllipse(in: CGRect(x: center.x + x - dot, y: center.y + y - dot, width: dot * 2, height: dot * 2))
+                }
+            }
+            context.fill(path, with: .color(color))
+        }
+        .allowsHitTesting(false)
     }
 }
 
@@ -379,7 +422,8 @@ private struct Trackpad: View {
 
 // MARK: - Volume
 
-/// One bar: hold − or + to keep going, tap the level to mute.
+/// One bar: − and + step (hold to keep going); drag across the level to set it;
+/// tap the level to mute.
 private struct VolumeBar: View {
     @EnvironmentObject private var tv: TVConnection
 
@@ -388,24 +432,7 @@ private struct VolumeBar: View {
             step("minus", shape: UnevenRoundedRectangle(topLeadingRadius: 32, bottomLeadingRadius: 32,
                                                        bottomTrailingRadius: 8, topTrailingRadius: 8),
                  action: tv.volumeDown)
-
-            Key(shape: RoundedRectangle(cornerRadius: 8), action: tv.toggleMute) {
-                HStack(spacing: 10) {
-                    Image(systemName: tv.muted ? "speaker.slash.fill" : "speaker.wave.2.fill")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(tv.muted ? Theme.accent : Theme.muted)
-                        .frame(width: 22)
-                    Text(tv.volume.map { String(format: "%02d", $0) } ?? "--")
-                        .font(Theme.dot(34))
-                        .foregroundStyle(tv.muted ? Theme.muted : Theme.accent)
-                        .monospacedDigit()
-                        .contentTransition(.numericText())
-                        .animation(.easeOut(duration: 0.15), value: tv.volume)
-                }
-                .frame(maxWidth: .infinity)
-                .frame(height: 64)
-            }
-
+            VolumeLevel()
             step("plus", shape: UnevenRoundedRectangle(topLeadingRadius: 8, bottomLeadingRadius: 8,
                                                       bottomTrailingRadius: 32, topTrailingRadius: 32),
                  action: tv.volumeUp)
@@ -416,32 +443,157 @@ private struct VolumeBar: View {
         Key(repeats: true, shape: shape, action: action) {
             Image(systemName: symbol)
                 .font(.system(size: 18, weight: .bold))
-                .frame(width: 84, height: 64)
+                .frame(width: 76, height: 64)
+        }
+    }
+}
+
+private struct VolumeLevel: View {
+    @EnvironmentObject private var tv: TVConnection
+    @State private var start: Int?
+    @State private var pressed = false
+    private let ticks = UISelectionFeedbackGenerator()
+    private let shape = RoundedRectangle(cornerRadius: 8)
+
+    var body: some View {
+        let level = tv.volume ?? 0
+        VStack(spacing: 7) {
+            HStack(spacing: 8) {
+                Image(systemName: tv.muted ? "speaker.slash.fill" : "speaker.wave.2.fill")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(tv.muted ? Theme.accent : Theme.muted)
+                Text(tv.volume.map { String(format: "%02d", $0) } ?? "--")
+                    .font(Theme.dot(28))
+                    .foregroundStyle(tv.muted ? Theme.muted : Theme.accent)
+                    .monospacedDigit()
+                    .contentTransition(.numericText())
+            }
+            // The level as a row of dots, out of 100.
+            HStack(spacing: 4) {
+                ForEach(0..<16, id: \.self) { i in
+                    Circle()
+                        .fill(!tv.muted && Double(i) < (Double(level) / 100 * 16).rounded(.up) ? Theme.accent : Theme.muted.opacity(0.3))
+                        .frame(width: 4, height: 4)
+                }
+            }
+        }
+        .animation(.easeOut(duration: 0.15), value: tv.volume)
+        .animation(.easeOut(duration: 0.15), value: tv.muted)
+        .frame(maxWidth: .infinity)
+        .frame(height: 64)
+        .background(pressed ? Theme.keyPressed : Theme.key, in: shape)
+        .overlay(shape.stroke(Theme.hairline, lineWidth: 1))
+        .shadow(color: pressed ? .clear : Theme.shadow, radius: 2, y: 1)
+        .contentShape(shape)
+        .gesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { value in
+                    pressed = true
+                    if start == nil { start = tv.volume ?? 0; ticks.prepare() }
+                    guard let start, abs(value.translation.width) > 6 else { return }
+                    let target = min(100, max(0, start + Int(value.translation.width / 6)))
+                    if target != tv.volume {
+                        ticks.selectionChanged()
+                        tv.setVolume(target)
+                    }
+                }
+                .onEnded { value in
+                    pressed = false
+                    start = nil
+                    if hypot(value.translation.width, value.translation.height) < 6 {
+                        haptic()
+                        tv.toggleMute()
+                    }
+                }
+        )
+        .accessibilityElement()
+        .accessibilityLabel("Volume")
+        .accessibilityValue(tv.muted ? "Muted" : "\(level)")
+        .accessibilityAdjustableAction { direction in
+            if direction == .increment { tv.volumeUp() } else { tv.volumeDown() }
         }
     }
 }
 
 // MARK: - Playback
 
+/// Rewind, one play/pause, fast-forward.
 private struct Playback: View {
     @EnvironmentObject private var tv: TVConnection
-    @Binding var sheet: Sheet?
+    /// The TV doesn't say whether something is playing, so we follow what was last pressed.
+    @State private var playing: Bool?
 
     var body: some View {
-        HStack {
-            IconKey(symbol: "backward.fill", size: 50, repeats: true) { tv.press(.rewind) }
-            Spacer()
-            IconKey(symbol: "play.fill", size: 50) { tv.press(.play) }
-            Spacer()
-            IconKey(symbol: "pause.fill", size: 50) { tv.press(.pause) }
-            Spacer()
-            IconKey(symbol: "forward.fill", size: 50, repeats: true) { tv.press(.fastForward) }
-            Spacer()
-            Key(shape: Circle(), action: { sheet = .numbers }) {
-                Text("123")
-                    .font(Theme.mono(11))
-                    .frame(width: 50, height: 50)
+        HStack(spacing: 12) {
+            IconKey(symbol: "backward.fill", size: 56, repeats: true) { tv.press(.rewind) }
+            Key(shape: Capsule(), action: {
+                if playing == true { tv.press(.pause); playing = false } else { tv.press(.play); playing = true }
+            }) {
+                Image(systemName: playing == true ? "pause.fill" : playing == false ? "play.fill" : "playpause.fill")
+                    .font(.system(size: 20, weight: .semibold))
+                    .contentTransition(.symbolEffect(.replace))
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 56)
             }
+            IconKey(symbol: "forward.fill", size: 56, repeats: true) { tv.press(.fastForward) }
         }
+    }
+}
+
+// MARK: - Power
+
+/// Hold to turn the TV off: a ring of dots fills around the key, then it fires.
+/// Let go early and it drains away.
+private struct PowerKey: View {
+    @EnvironmentObject private var tv: TVConnection
+    @State private var progress: CGFloat = 0
+    @State private var holding = false
+    @State private var fired = false
+    @State private var timer: Task<Void, Never>?
+
+    private let hold: Double = 0.8
+
+    var body: some View {
+        Image(systemName: "power")
+            .font(.system(size: 14, weight: .semibold))
+            .foregroundStyle(Theme.accent)
+            .frame(width: 44, height: 44)
+            .background(holding ? Theme.keyPressed : Theme.key, in: Circle())
+            .overlay(Circle().stroke(Theme.hairline, lineWidth: 1))
+            .overlay(
+                Circle()
+                    .inset(by: -5)
+                    .trim(from: 0, to: progress)
+                    .stroke(Theme.accent, style: StrokeStyle(lineWidth: 3, lineCap: .round, dash: [0.1, 5.5]))
+                    .rotationEffect(.degrees(-90))
+            )
+            .scaleEffect(holding ? 0.97 : 1)
+            .animation(.easeOut(duration: 0.15), value: holding)
+            .contentShape(Circle())
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { _ in
+                        guard !holding, !fired else { return }
+                        holding = true
+                        haptic(.light)
+                        withAnimation(.linear(duration: hold)) { progress = 1 }
+                        timer = Task { @MainActor in
+                            try? await Task.sleep(for: .seconds(hold))
+                            guard !Task.isCancelled else { return }
+                            fired = true
+                            haptic(.heavy)
+                            tv.powerOff()
+                        }
+                    }
+                    .onEnded { _ in
+                        timer?.cancel()
+                        holding = false
+                        fired = false
+                        withAnimation(.easeOut(duration: 0.2)) { progress = 0 }
+                    }
+            )
+            .accessibilityLabel("Turn TV off")
+            .accessibilityAddTraits(.isButton)
+            .accessibilityAction { tv.powerOff() }
     }
 }

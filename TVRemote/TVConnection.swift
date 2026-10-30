@@ -55,6 +55,8 @@ final class TVConnection: ObservableObject {
     @Published private(set) var inputs: [Input] = []
     @Published private(set) var volume: Int?
     @Published private(set) var muted = false
+    /// The app on screen right now, from the TV.
+    @Published private(set) var foreground: String?
     @Published private(set) var host: String? = UserDefaults.standard.string(forKey: "host")
 
     private let session = URLSession(configuration: .default, delegate: LocalTrust(), delegateQueue: nil)
@@ -83,6 +85,7 @@ final class TVConnection: ObservableObject {
     func demo() {
         host = "192.168.1.20"
         volume = 14
+        foreground = "Netflix"
         apps = ["Netflix", "Prime Video", "Disney+", "YouTube", "Apple TV", "Spotify", "LG Channels", "Twitch"]
             .map { App(id: $0, title: $0, icon: nil) }
         inputs = [Input(id: "HDMI_1", label: "HDMI 1", connected: true),
@@ -268,6 +271,9 @@ final class TVConnection: ObservableObject {
     private func didConnect() async {
         await openPointer()
         await loadInputs()
+        subscribe("ssap://com.webos.applicationManager/getForegroundAppInfo") { [weak self] payload in
+            self?.foreground = payload["appId"] as? String
+        }
         subscribe("ssap://audio/getVolume") { [weak self] payload in
             let status = payload["volumeStatus"] as? [String: Any] ?? payload
             if let level = status["volume"] as? Int { self?.volume = level }
@@ -362,11 +368,17 @@ final class TVConnection: ObservableObject {
         case info = "INFO", guide = "GUIDE", captions = "CC", dash = "DASH"
     }
 
-    func pressDigit(_ digit: Int) {
-        sendPointer("type:button\nname:\(digit)")
-    }
+
 
     // MARK: Everything else
+
+    var foregroundApp: App? { apps.first { $0.id == foreground } }
+
+    /// Sets the level directly (dragging the volume bar). Shown right away, confirmed by the TV.
+    func setVolume(_ level: Int) {
+        volume = level
+        run("ssap://audio/setVolume", ["volume": level])
+    }
 
     func volumeUp() { run("ssap://audio/volumeUp") }
     func volumeDown() { run("ssap://audio/volumeDown") }
