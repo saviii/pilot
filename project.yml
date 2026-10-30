@@ -25,6 +25,7 @@ targets:
         UILaunchScreen: {}
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         UIAppFonts: [Doto.ttf, MartianMono.ttf]
+        NSPhotoLibraryAddUsageDescription: Pilot saves TV screenshots to your photos.
         NSLocalNetworkUsageDescription: Pilot talks to your LG TV over your home Wi-Fi.
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true

@@ -519,3 +519,85 @@ struct TVsSheet: View {
         editing = false
     }
 }
+
+
+/// A still of the TV's screen: save it or send it on.
+struct ScreenshotSheet: View {
+    @EnvironmentObject private var tv: TVConnection
+    @Environment(\.dismiss) private var dismiss
+    @State private var image: UIImage?
+    @State private var failure: String?
+    @State private var saved = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Text("Screenshot").font(.headline)
+                Spacer()
+                Button("Done") { dismiss() }
+                    .font(Theme.mono(12))
+                    .foregroundStyle(Theme.accent)
+            }
+
+            ZStack {
+                RoundedRectangle(cornerRadius: 16).fill(Theme.key)
+                if let image {
+                    Image(uiImage: image).resizable().scaledToFit()
+                        .clipShape(RoundedRectangle(cornerRadius: 16))
+                        .transition(.opacity.combined(with: .scale(scale: 0.98)))
+                } else if let failure {
+                    Text(failure).font(.subheadline).foregroundStyle(Theme.muted).multilineTextAlignment(.center).padding()
+                } else {
+                    ProgressView().tint(Theme.accent)
+                }
+            }
+            .aspectRatio(16 / 9, contentMode: .fit)
+            .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.hairline))
+
+            Caption("Netflix and other protected video come out black")
+
+            HStack(spacing: 10) {
+                Button {
+                    guard let image else { return }
+                    UIImageWriteToSavedPhotosAlbum(image, nil, nil, nil)
+                    haptic(.medium)
+                    saved = true
+                    // Show "Saved" for a beat, then get out of the way.
+                    Task {
+                        try? await Task.sleep(for: .milliseconds(700))
+                        dismiss()
+                    }
+                } label: {
+                    Label(saved ? "Saved" : "Save to Photos", systemImage: saved ? "checkmark" : "square.and.arrow.down")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 48)
+                        .foregroundStyle(Theme.background)
+                        .background(Theme.accent, in: RoundedRectangle(cornerRadius: 14))
+                }
+                .buttonStyle(Pressable())
+                .disabled(image == nil || saved)
+
+                if let image {
+                    ShareLink(item: Image(uiImage: image), preview: SharePreview("TV screenshot", image: Image(uiImage: image))) {
+                        Label("Share", systemImage: "square.and.arrow.up")
+                            .font(.subheadline.weight(.semibold))
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 48)
+                            .foregroundStyle(Theme.ink)
+                            .background(Theme.key, in: RoundedRectangle(cornerRadius: 14))
+                            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.hairline))
+                    }
+                }
+            }
+            .animation(.easeOut(duration: 0.15), value: saved)
+        }
+        .padding(24)
+        .foregroundStyle(Theme.ink)
+        .animation(.easeOut(duration: 0.2), value: image != nil)
+        .task {
+            do { image = try await tv.screenshot() }
+            catch { failure = "Couldn't get a screenshot: \(error.localizedDescription)" }
+        }
+    }
+}

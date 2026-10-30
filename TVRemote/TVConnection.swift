@@ -253,7 +253,7 @@ final class TVConnection: ObservableObject {
                     "CONTROL_INPUT_JOYSTICK", "CONTROL_INPUT_MEDIA_PLAYBACK",
                     "CONTROL_INPUT_TEXT", "CONTROL_MOUSE_AND_KEYBOARD", "CONTROL_INPUT_TV",
                     "READ_INSTALLED_APPS", "READ_RUNNING_APPS", "READ_APP_STATUS",
-                    "READ_POWER_STATE", "READ_SETTINGS", "READ_INPUT_DEVICE_LIST",
+                    "READ_POWER_STATE", "READ_SETTINGS", "READ_INPUT_DEVICE_LIST", "CAPTURE_TV_SCREEN",
                     "WRITE_NOTIFICATION_TOAST",
                 ],
             ],
@@ -503,6 +503,21 @@ final class TVConnection: ObservableObject {
     func type(_ text: String) { ime("insertText", ["text": text, "replace": 0]) }
     func deleteCharacters(_ count: Int) { ime("deleteCharacters", ["count": count]) }
     func sendEnter() { ime("sendEnterKey") }
+
+    // MARK: Screenshot
+
+    /// Asks the TV for a still of the screen and downloads it. Protected video
+    /// (Netflix and the like, most HDMI video) comes back black: that's the TV's rule.
+    func screenshot() async throws -> UIImage {
+        let reply = try await request("ssap://tv/executeOneShot", ["path": "/tmp/capture.jpg", "method": "DISPLAY", "format": "JPG"])
+        log("screenshot → \(reply)", "capture")
+        guard let uri = reply["imageUri"] as? String, let url = URL(string: uri) else {
+            throw TVError(message: "The TV didn't send a picture.")
+        }
+        let (data, _) = try await session.data(from: url)
+        guard let image = UIImage(data: data) else { throw TVError(message: "The TV's picture didn't load.") }
+        return image
+    }
 
     /// YouTube's TV app draws its own keyboard and ignores typed text, so we
     /// open its search results directly instead.
