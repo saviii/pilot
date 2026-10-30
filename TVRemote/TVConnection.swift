@@ -1,5 +1,6 @@
 import Foundation
 import Network
+import PilotKit
 import UIKit
 
 /// Talks to an LG webOS TV over the local network, using the same
@@ -15,21 +16,9 @@ final class TVConnection: ObservableObject {
         case failed(String)
     }
 
-    struct App: Identifiable, Hashable {
-        let id: String
-        let title: String
-        let icon: URL?
-        var color: String? = nil
-    }
-
-    struct Input: Identifiable, Hashable {
-        let id: String
-        let label: String
-        let connected: Bool
-        var port: Int? = nil
-        var signal = false
-        var appId: String? = nil
-    }
+    typealias App = TVApp
+    typealias Input = TVInput
+    typealias SavedTV = PilotKit.SavedTV
 
     /// The HDMI input on screen (the PS5, say), if that's what's showing.
     var foregroundInput: Input? { inputs.first { $0.appId != nil && $0.appId == foreground } }
@@ -83,17 +72,11 @@ final class TVConnection: ObservableObject {
     @Published private(set) var keyboardOpen = false
     @Published private(set) var host: String? = UserDefaults.standard.string(forKey: "host")
 
+    /// Pairing keys, wake addresses and the saved list, kept on the phone.
+    private let pairings = Pairings(store: UserDefaults.standard)
+
     /// Every TV this phone has paired with.
-    struct SavedTV: Codable, Hashable, Identifiable {
-        var host: String
-        var name: String
-        var id: String { host }
-    }
-    @Published private(set) var saved: [SavedTV] = {
-        guard let data = UserDefaults.standard.data(forKey: "tvs"),
-              let list = try? JSONDecoder().decode([SavedTV].self, from: data) else { return [] }
-        return list
-    }()
+    @Published private(set) var saved: [SavedTV] = Pairings(store: UserDefaults.standard).saved
     /// Showing setup to add another TV, while staying paired with this one.
     @Published var adding = false
     private var hostBeforeAdding: String?
@@ -115,14 +98,14 @@ final class TVConnection: ObservableObject {
 
     init() {
         // Phones paired before there was a TV list: keep that TV.
-        if saved.isEmpty, let host, UserDefaults.standard.string(forKey: "key.\(host)") != nil {
+        if saved.isEmpty, let host, pairings.key(for: host) != nil {
             save([SavedTV(host: host, name: "Living room")])
         }
     }
 
     private func save(_ list: [SavedTV]) {
         saved = list
-        UserDefaults.standard.set(try? JSONEncoder().encode(list), forKey: "tvs")
+        pairings.save(list)
     }
 
     func rename(to name: String) {
@@ -197,7 +180,7 @@ final class TVConnection: ObservableObject {
     /// stays on screen and reconnects quietly instead of going back to setup.
     var isPaired: Bool {
         guard let host else { return false }
-        return UserDefaults.standard.string(forKey: "key.\(host)") != nil
+        return pairings.key(for: host) != nil
     }
 
     /// The app went to the background: iOS will kill the socket anyway, so close it cleanly.
@@ -216,8 +199,8 @@ final class TVConnection: ObservableObject {
     /// Forget the current TV. If there's another one, switch to it.
     func forget() {
         guard let host else { return }
-        UserDefaults.standard.removeObject(forKey: "key.\(host)")
-        save(saved.filter { $0.host != host })
+        pairings.forget(host)
+        saved = pairings.saved
         close()
         if let next = saved.first {
             connect(to: next.host)
@@ -270,30 +253,7 @@ final class TVConnection: ObservableObject {
     }
 
     private func register() {
-        send(registration(key: host.flatMap { UserDefaults.standard.string(forKey: "key.\($0)") }))
-    }
-
-    /// The hello the TV expects: who we are, what we'd like to do, and our key if we have one.
-    private func registration(key: String?) -> [String: Any] {
-        var payload: [String: Any] = [
-            "forcePairing": false,
-            "pairingType": "PROMPT",
-            "manifest": [
-                "manifestVersion": 1,
-                "appVersion": "1.0",
-                "permissions": [
-                    "LAUNCH", "LAUNCH_WEBAPP", "APP_TO_APP", "CLOSE",
-                    "CONTROL_AUDIO", "CONTROL_POWER", "CONTROL_DISPLAY",
-                    "CONTROL_INPUT_JOYSTICK", "CONTROL_INPUT_MEDIA_PLAYBACK",
-                    "CONTROL_INPUT_TEXT", "CONTROL_MOUSE_AND_KEYBOARD", "CONTROL_INPUT_TV",
-                    "READ_INSTALLED_APPS", "READ_RUNNING_APPS", "READ_APP_STATUS",
-                    "READ_POWER_STATE", "READ_SETTINGS", "READ_INPUT_DEVICE_LIST", "CAPTURE_TV_SCREEN", "READ_NETWORK_STATE",
-                    "WRITE_NOTIFICATION_TOAST",
-                ],
-            ],
-        ]
-        if let key { payload["client-key"] = key }
-        return ["type": "register", "id": "register", "payload": payload]
+        send(WebOS.registration(key: host.flatMap(pairings.key(for:))))
     }
 
     private func listen(on task: URLSessionWebSocketTask) {
@@ -349,14 +309,12 @@ final class TVConnection: ObservableObject {
         let type = json["type"] as? String ?? ""
         let payload = json["payload"] as? [String: Any] ?? [:]
 
-        if id == "register" {
-            switch type {
-            case "response" where payload["pairingType"] as? String == "PROMPT":
+        if let reply = WebOS.registerReply(json) {
+            switch reply {
+            case .prompt:
                 state = .waitingForApproval
-            case "registered":
-                if let key = payload["client-key"] as? String, let host {
-                    UserDefaults.standard.set(key, forKey: "key.\(host)")
-                }
+            case .registered(let key):
+                if let key, let host { pairings.setKey(key, for: host) }
                 state = .connected
                 retries = 0
                 unreachable = false
@@ -366,11 +324,9 @@ final class TVConnection: ObservableObject {
                 adding = false
                 hostBeforeAdding = nil
                 Task { await didConnect() }
-            case "error":
+            case .refused:
                 close()
                 state = .failed("The TV said no. Try again and press OK on the TV.")
-            default:
-                break
             }
             return
         }
@@ -406,21 +362,14 @@ final class TVConnection: ObservableObject {
             self?.playState = info?["playState"] as? String
         }
         subscribe("ssap://audio/getVolume") { [weak self] payload in
-            let status = payload["volumeStatus"] as? [String: Any] ?? payload
-            if let level = status["volume"] as? Int { self?.volume = level }
-            if let mute = (status["muteStatus"] ?? status["muted"]) as? Bool { self?.muted = mute }
+            let status = WebOS.volume(from: payload)
+            if let level = status.level { self?.volume = level }
+            if let mute = status.muted { self?.muted = mute }
             if let self { LiveRemote.update(self) }
         }
         let launch = try? await request("ssap://com.webos.applicationManager/listLaunchPoints")
         dump(launch, "launchpoints")
-        if let payload = launch,
-           let points = payload["launchPoints"] as? [[String: Any]] {
-            apps = points.compactMap { point in
-                guard let id = point["id"] as? String, let title = point["title"] as? String else { return nil }
-                let icon = (point["largeIcon"] as? String) ?? (point["icon"] as? String)
-                return App(id: id, title: title, icon: icon.flatMap(URL.init(string:)), color: point["iconColor"] as? String)
-            }
-        }
+        if let launch { apps = WebOS.apps(from: launch) }
     }
 
     // MARK: Requests
@@ -439,7 +388,7 @@ final class TVConnection: ObservableObject {
         let id = "req_\(nextID)"
         return try await withCheckedThrowingContinuation { continuation in
             replies[id] = continuation
-            send(["type": "request", "id": id, "uri": uri, "payload": payload])
+            send(WebOS.request(id: id, uri: uri, payload: payload))
         }
     }
 
@@ -530,25 +479,20 @@ final class TVConnection: ObservableObject {
     /// Look over the Wi-Fi for a TV we don't know and offer it our pairing: only the TV we
     /// paired with accepts it, and then the pairing, name and wake address move over.
     private func relocate() async {
-        guard !relocating, let old = host, let key = UserDefaults.standard.string(forKey: "key.\(old)") else { return }
+        guard !relocating, let old = host, let key = pairings.key(for: old) else { return }
         relocating = true
         defer { relocating = false }
-        let known = Set(saved.map(\.host)).union([old])
-        for address in await TVFinder.find(with: self) where !known.contains(address) {
-            guard host == old, state != .connected else { return }
-            guard await accepts(address, key: key) else { continue }
-            log("\(old) moved to \(address)", "relocate")
-            let defaults = UserDefaults.standard
-            defaults.set(key, forKey: "key.\(address)")
-            defaults.removeObject(forKey: "key.\(old)")
-            if let mac = defaults.string(forKey: "mac.\(old)") {
-                defaults.set(mac, forKey: "mac.\(address)")
-                defaults.removeObject(forKey: "mac.\(old)")
-            }
-            save(saved.map { $0.host == old ? SavedTV(host: address, name: $0.name) : $0 })
-            connect(to: address)
-            return
+        let answering = await TVFinder.find(with: self)
+        let moved = await Finding.moved(from: old, known: Set(saved.map(\.host)), answering: answering) { address in
+            // Stop asking if it came back at the old address meanwhile.
+            guard self.host == old, self.state != .connected else { return false }
+            return await self.accepts(address, key: key)
         }
+        guard let moved, host == old, state != .connected else { return }
+        log("\(old) moved to \(moved)", "relocate")
+        pairings.move(from: old, to: moved)
+        saved = pairings.saved
+        connect(to: moved)
     }
 
     /// Whether the TV at `address` already knows our pairing key. A TV that doesn't
@@ -558,7 +502,7 @@ final class TVConnection: ObservableObject {
         let task = session.webSocketTask(with: url)
         task.resume()
         defer { task.cancel(with: .goingAway, reason: nil) }
-        guard let data = try? JSONSerialization.data(withJSONObject: registration(key: key)),
+        guard let data = try? JSONSerialization.data(withJSONObject: WebOS.registration(key: key)),
               let text = String(data: data, encoding: .utf8) else { return false }
         try? await task.send(.string(text))
         return await withTaskGroup(of: Bool.self) { group in
@@ -567,9 +511,11 @@ final class TVConnection: ObservableObject {
                     guard case .string(let text) = message,
                           let json = try? JSONSerialization.jsonObject(with: Data(text.utf8)) as? [String: Any]
                     else { continue }
-                    if json["type"] as? String == "registered" { return true }
-                    if json["type"] as? String == "error" { return false }
-                    if (json["payload"] as? [String: Any])?["pairingType"] as? String == "PROMPT" { return false }
+                    switch WebOS.registerReply(json) {
+                    case .registered: return true
+                    case .prompt, .refused: return false
+                    case nil: continue
+                    }
                 }
                 return false
             }
@@ -582,26 +528,19 @@ final class TVConnection: ObservableObject {
     }
 
     /// The TV can be woken: we've learned its network (MAC) address.
-    var canWake: Bool { host.flatMap { UserDefaults.standard.string(forKey: "mac.\($0)") } != nil }
+    var canWake: Bool { host.flatMap(pairings.mac(for:)) != nil }
 
     /// Learns the TV's network address while it's on, so it can be woken later.
     private func learnAddress() async {
         guard let host else { return }
         guard let info = try? await request("ssap://com.webos.service.connectionmanager/getinfo") else { return }
-        let wifi = (info["wifiInfo"] as? [String: Any])?["macAddress"] as? String
-        let wired = (info["wiredInfo"] as? [String: Any])?["macAddress"] as? String
-        if let mac = wifi ?? wired, mac.split(separator: ":").count == 6 {
-            UserDefaults.standard.set(mac, forKey: "mac.\(host)")
-        }
+        if let mac = WebOS.macAddress(from: info) { pairings.setMac(mac, for: host) }
     }
 
     /// Wake-on-LAN. iOS won't let us broadcast, so the packet goes straight to the
     /// TV's address; then we keep trying to reconnect for a while.
     func wake() {
-        guard let host, let mac = UserDefaults.standard.string(forKey: "mac.\(host)") else { return }
-        let bytes = mac.split(separator: ":").compactMap { UInt8($0, radix: 16) }
-        guard bytes.count == 6 else { return }
-        let packet = Data(repeating: 0xFF, count: 6) + Data((0..<16).flatMap { _ in bytes })
+        guard let host, let mac = pairings.mac(for: host), let packet = WebOS.wakePacket(mac: mac) else { return }
         for port in [9, 7] as [UInt16] {
             let link = NWConnection(host: NWEndpoint.Host(host), port: NWEndpoint.Port(rawValue: port)!, using: .udp)
             link.start(queue: .main)
@@ -629,16 +568,7 @@ final class TVConnection: ObservableObject {
         do { result = try await request("ssap://tv/getExternalInputList") }
         catch { dump(["error": error.localizedDescription], "inputs"); return }
         dump(result, "inputs")
-        guard let payload = Optional(result),
-              let devices = payload["devices"] as? [[String: Any]] else { return }
-        inputs = devices.compactMap { device in
-            guard let id = device["id"] as? String else { return nil }
-            return Input(id: id, label: device["label"] as? String ?? id,
-                         connected: device["connected"] as? Bool ?? false,
-                         port: device["port"] as? Int,
-                         signal: device["hdmiSignalExist"] as? Bool ?? false,
-                         appId: device["appId"] as? String)
-        }
+        inputs = WebOS.inputs(from: result)
     }
     func launch(_ app: App) { run("ssap://system.launcher/launch", ["id": app.id]) }
     func play() { run("ssap://media.controls/play") }

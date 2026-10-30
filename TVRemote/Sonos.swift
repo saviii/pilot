@@ -1,15 +1,12 @@
 import Foundation
+import PilotKit
 
 /// The Sonos in the room, over its local control port (the same UPnP calls
 /// Home Assistant and the Sonos remote apps use). Nothing changes unless you
 /// change it: Pilot only reads and sets what you tap.
 @MainActor
 final class Sonos: ObservableObject {
-    struct Track: Equatable {
-        var title: String
-        var artist: String?
-        var art: URL?
-    }
+    typealias Track = SonosSOAP.Track
 
     @Published private(set) var host: String? = UserDefaults.standard.string(forKey: "sonos")
     @Published private(set) var room = UserDefaults.standard.string(forKey: "sonos.room") ?? "Sonos"
@@ -42,10 +39,8 @@ final class Sonos: ObservableObject {
     /// Looks for a Sonos on this phone's Wi-Fi (skipping a Sub, which plays through the bar).
     func findIfNeeded() async {
         guard host == nil, let me = TVFinder.localAddress() else { return }
-        let prefix = me.split(separator: ".").dropLast().joined(separator: ".")
         let found = await withTaskGroup(of: (String, String, String, String)?.self) { group in
-            for last in 1...254 {
-                let address = "\(prefix).\(last)"
+            for address in Finding.neighbors(of: me) {
                 group.addTask { await Self.describe(address) }
             }
             var hits: [(String, String, String, String)] = []
@@ -67,9 +62,8 @@ final class Sonos: ObservableObject {
         request.httpMethod = "GET"
         guard let (data, _) = try? await URLSession.shared.data(for: request),
               let xml = String(data: data, encoding: .utf8),
-              let model = value("modelName", in: xml),
-              let udn = value("UDN", in: xml) else { return nil }
-        return (address, value("roomName", in: xml) ?? "Sonos", model, udn.replacingOccurrences(of: "uuid:", with: ""))
+              let speaker = SonosSOAP.describe(xml) else { return nil }
+        return (address, speaker.room, speaker.model, speaker.player)
     }
 
     // MARK: Reading
@@ -80,10 +74,10 @@ final class Sonos: ObservableObject {
             playing = Self.value("CurrentTransportState", in: xml) == "PLAYING"
         }
         if let xml = try? await call(.transport, "GetPositionInfo") {
-            let uri = Self.value("TrackURI", in: xml) ?? ""
-            onTV = uri.hasPrefix("x-sonos-htastream:")
-            fromAirPlay = uri.hasPrefix("x-sonos-vli:")
-            track = onTV ? nil : Self.track(from: Self.value("TrackMetaData", in: xml), host: host)
+            let source = SonosSOAP.source(trackURI: Self.value("TrackURI", in: xml) ?? "")
+            onTV = source == .tv
+            fromAirPlay = source == .airPlay
+            track = onTV ? nil : SonosSOAP.track(from: Self.value("TrackMetaData", in: xml), host: host)
         }
         if let xml = try? await call(.rendering, "GetVolume", [("Channel", "Master")]),
            let level = Self.value("CurrentVolume", in: xml).flatMap(Int.init) {
@@ -106,7 +100,7 @@ final class Sonos: ObservableObject {
         night = await eq("NightMode") == 1
         if let level = await eq("SubGain") { sub = level }
         if let xml = try? await call(.transport, "GetRemainingSleepTimerDuration") {
-            sleepLeft = Self.seconds(Self.value("RemainingSleepTimerDuration", in: xml))
+            sleepLeft = SonosSOAP.seconds(Self.value("RemainingSleepTimerDuration", in: xml))
         }
     }
 
@@ -165,7 +159,7 @@ final class Sonos: ObservableObject {
 
     /// The Sonos's own sleep timer; nil turns it off.
     func sleep(minutes: Int?) {
-        let duration = minutes.map { String(format: "%02d:%02d:00", $0 / 60, $0 % 60) } ?? ""
+        let duration = SonosSOAP.sleepDuration(minutes: minutes)
         sleepLeft = minutes.map { $0 * 60 }
         Task { _ = try? await call(.transport, "ConfigureSleepTimer", [("NewSleepTimerDuration", duration)]) }
     }
@@ -177,26 +171,17 @@ final class Sonos: ObservableObject {
 
     // MARK: SOAP
 
-    private enum Service {
-        case transport, rendering
-        var path: String { self == .transport ? "AVTransport" : "RenderingControl" }
-        var urn: String { "urn:schemas-upnp-org:service:\(path):1" }
-    }
+    private typealias Service = SonosSOAP.Service
 
     private func call(_ service: Service, _ action: String, _ args: [(String, String)] = []) async throws -> String {
         guard let host, let url = URL(string: "http://\(host):1400/MediaRenderer/\(service.path)/Control") else {
             throw TVError(message: "No Sonos")
         }
-        let fields = ([("InstanceID", "0")] + args).map { "<\($0.0)>\(Self.escape($0.1))</\($0.0)>" }.joined()
-        let body = """
-        <?xml version="1.0" encoding="utf-8"?><s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" \
-        s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"><s:Body><u:\(action) xmlns:u="\(service.urn)">\
-        \(fields)</u:\(action)></s:Body></s:Envelope>
-        """
+        let body = SonosSOAP.envelope(service, action, args)
         var request = URLRequest(url: url, timeoutInterval: 3)
         request.httpMethod = "POST"
         request.setValue("text/xml; charset=\"utf-8\"", forHTTPHeaderField: "Content-Type")
-        request.setValue("\"\(service.urn)#\(action)\"", forHTTPHeaderField: "SOAPACTION")
+        request.setValue(SonosSOAP.soapAction(service, action), forHTTPHeaderField: "SOAPACTION")
         request.httpBody = Data(body.utf8)
         let (data, response) = try await URLSession.shared.data(for: request)
         guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw TVError(message: "Sonos said no to \(action)") }
@@ -205,35 +190,5 @@ final class Sonos: ObservableObject {
 
     // MARK: Little XML helpers
 
-    nonisolated static func value(_ tag: String, in xml: String) -> String? {
-        guard let open = xml.range(of: "<\(tag)>") ?? xml.range(of: "<\(tag) [^>]*>", options: .regularExpression),
-              let close = xml.range(of: "</\(tag)>", range: open.upperBound..<xml.endIndex) else { return nil }
-        return unescape(String(xml[open.upperBound..<close.lowerBound]))
-    }
-
-    nonisolated private static func unescape(_ text: String) -> String {
-        text.replacingOccurrences(of: "&lt;", with: "<").replacingOccurrences(of: "&gt;", with: ">")
-            .replacingOccurrences(of: "&quot;", with: "\"").replacingOccurrences(of: "&apos;", with: "'")
-            .replacingOccurrences(of: "&amp;", with: "&")
-    }
-
-    nonisolated private static func escape(_ text: String) -> String {
-        text.replacingOccurrences(of: "&", with: "&amp;").replacingOccurrences(of: "<", with: "&lt;")
-            .replacingOccurrences(of: ">", with: "&gt;").replacingOccurrences(of: "\"", with: "&quot;")
-    }
-
-    nonisolated private static func track(from didl: String?, host: String?) -> Track? {
-        guard let didl, let title = value("dc:title", in: didl), !title.isEmpty else { return nil }
-        var art: URL?
-        if let raw = value("upnp:albumArtURI", in: didl) {
-            art = raw.hasPrefix("http") ? URL(string: raw) : host.flatMap { URL(string: "http://\($0):1400\(raw)") }
-        }
-        return Track(title: title, artist: value("dc:creator", in: didl), art: art)
-    }
-
-    nonisolated private static func seconds(_ text: String?) -> Int? {
-        guard let parts = text?.split(separator: ":").compactMap({ Int($0) }), parts.count == 3 else { return nil }
-        let total = parts[0] * 3600 + parts[1] * 60 + parts[2]
-        return total > 0 ? total : nil
-    }
+    nonisolated static func value(_ tag: String, in xml: String) -> String? { SonosSOAP.value(tag, in: xml) }
 }

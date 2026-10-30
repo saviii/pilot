@@ -1,4 +1,5 @@
 import Foundation
+import PilotKit
 
 /// Looks for LG TVs on the Wi-Fi: tries every address on this phone's subnet
 /// at once and keeps the ones that answer like a TV. Takes a couple of seconds.
@@ -17,18 +18,15 @@ final class TVFinder: ObservableObject {
     /// Every address on this phone's subnet that answers like an LG TV, in order.
     static func find(with tv: TVConnection) async -> [String] {
         guard let me = localAddress() else { return [] }
-        let prefix = me.split(separator: ".").dropLast().joined(separator: ".")
         let hits = await withTaskGroup(of: String?.self) { group in
-            for last in 1...254 {
-                let address = "\(prefix).\(last)"
-                guard address != me else { continue }
+            for address in Finding.neighbors(of: me) {
                 group.addTask { await tv.isTV(address) ? address : nil }
             }
             var hits: [String] = []
             for await hit in group { if let hit { hits.append(hit) } }
             return hits
         }
-        return hits.sorted { $0.split(separator: ".").last.flatMap { Int($0) } ?? 0 < $1.split(separator: ".").last.flatMap { Int($0) } ?? 0 }
+        return Finding.sorted(hits)
     }
 
     /// This phone's IPv4 address on Wi-Fi.

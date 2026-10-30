@@ -3,6 +3,9 @@ options:
   bundleIdPrefix: fyi.savi
   deploymentTarget:
     iOS: "17.0"
+packages:
+  PilotKit:
+    path: PilotKit
 targets:
   TVRemote:
     type: application
@@ -10,6 +13,7 @@ targets:
     sources: [TVRemote, Shared]
     dependencies:
       - target: PilotWidgets
+      - package: PilotKit
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: fyi.savi.tvremote
