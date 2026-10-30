@@ -1,0 +1,52 @@
+# The same `make verify` agents run locally, plus demo screenshots to look at.
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: XcodeGen (pinned, so the generated project matches)
+        run: |
+          curl -fsSL -o /tmp/xcodegen.zip https://github.com/yonaskolb/XcodeGen/releases/download/2.46.0/xcodegen.zip
+          unzip -q /tmp/xcodegen.zip -d /tmp/xcodegen
+          echo "/tmp/xcodegen/xcodegen/bin" >> "$GITHUB_PATH"
+
+      - name: Versions
+        run: xcodebuild -version && swift --version && xcodegen --version
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            build/dd
+            PilotKit/.build
+          key: dd-${{ runner.os }}-${{ hashFiles('project.yml', 'PilotKit/Package.swift') }}
+          restore-keys: dd-${{ runner.os }}-
+
+      - name: make verify
+        run: make verify
+
+      - name: Demo screenshots
+        if: github.event_name == 'pull_request'
+        run: SHOT_WAIT=8 make shots
+
+      - uses: actions/upload-artifact@v4
+        if: github.event_name == 'pull_request'
+        with:
+          name: screenshots
+          path: build/shots/*.png
+          if-no-files-found: ignore

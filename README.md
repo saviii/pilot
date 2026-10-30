@@ -34,7 +34,18 @@ Needs a Mac with a recent Xcode, an iPhone on iOS 17+, and an LG webOS TV on the
 2. Under Signing & Capabilities, pick your own team for both targets (`TVRemote` and `PilotWidgets`), and change the bundle IDs from `fyi.savi.…` to your own.
 3. Plug in your iPhone and run.
 
-The project is generated from `project.yml` with [XcodeGen](https://github.com/yonaskolb/XcodeGen), if you'd rather edit that and regenerate. In debug builds, launching with `-demo` shows the remote without a TV.
+The project is generated from `project.yml` with [XcodeGen](https://github.com/yonaskolb/XcodeGen) (`make setup` installs it). In debug builds, launching with `-demo` shows the remote without a TV.
+
+## Working on it
+
+Mostly agents do, from requests. `AGENTS.md` is their brief.
+
+| Command | What it does |
+|---|---|
+| `make verify` | Everything CI checks: project matches `project.yml`, formatting, tests, build |
+| `make test` | PilotKit's tests: the TV and Sonos logic, no TV needed |
+| `make shots` | Demo-mode screenshots in `build/shots/` |
+| `make phone` | Build and install on a connected iPhone |
 
 ## Credits
 

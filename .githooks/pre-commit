@@ -1,0 +1,7 @@
+#!/bin/sh
+# Format check on the Swift files being committed (fast). `make setup` turns this on.
+files=$(git diff --cached --name-only --diff-filter=ACM -- '*.swift')
+[ -z "$files" ] && exit 0
+command -v swift >/dev/null || exit 0
+# shellcheck disable=SC2086
+swift format lint --strict $files || { echo "Not formatted. Run: make format"; exit 1; }
