@@ -37,7 +37,7 @@ struct TVActionIntent: LiveActivityIntent {
 
     func perform() async throws -> some IntentResult {
         #if APP
-        await LiveRemote.run(action)
+            await LiveRemote.run(action)
         #endif
         return .result()
     }

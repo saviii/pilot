@@ -1,0 +1,26 @@
+# The same `make verify` agents run locally. Screenshots are the agent's job (`make shots`),
+# attached to the PR, not CI's.
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # The check a PR needs to merge. About 2 minutes.
+  verify:
+    runs-on: macos-26
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup
+      - name: make verify
+        run: make verify

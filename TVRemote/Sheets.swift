@@ -88,8 +88,10 @@ struct KeyboardSheet: View {
             if youtube, let console {
                 HStack(spacing: 4) {
                     segment("The TV", symbol: "tv", on: !onConsole) { onConsole = false }
-                    segment(console.label, symbol: console.label.contains("PlayStation") ? "gamecontroller" : "cable.connector",
-                            on: onConsole) { onConsole = true }
+                    segment(
+                        console.label, symbol: console.label.contains("PlayStation") ? "gamecontroller" : "cable.connector",
+                        on: onConsole
+                    ) { onConsole = true }
                 }
                 .padding(4)
                 .background(Theme.key, in: RoundedRectangle(cornerRadius: 16))
@@ -187,10 +189,13 @@ struct InputsSheet: View {
         VStack(alignment: .leading, spacing: 10) {
             Caption("Inputs").padding(.bottom, 6)
             ForEach(tv.inputs) { input in
-                Key(shape: RoundedRectangle(cornerRadius: 16), action: {
-                    tv.switchInput(input)
-                    dismiss()
-                }) {
+                Key(
+                    shape: RoundedRectangle(cornerRadius: 16),
+                    action: {
+                        tv.switchInput(input)
+                        dismiss()
+                    }
+                ) {
                     HStack(spacing: 14) {
                         Text(input.port.map { String($0) } ?? "")
                             .font(Theme.dot(26))
@@ -297,7 +302,9 @@ struct AppsSheet: View {
                             .autocorrectionDisabled()
                             .textInputAutocapitalization(.never)
                         if !query.isEmpty {
-                            Button { query = "" } label: {
+                            Button {
+                                query = ""
+                            } label: {
                                 Image(systemName: "xmark.circle.fill").foregroundStyle(Theme.muted)
                             }
                         }
@@ -555,10 +562,13 @@ struct TVsSheet: View {
     }
 
     private func other(_ saved: TVConnection.SavedTV) -> some View {
-        Key(shape: RoundedRectangle(cornerRadius: 18), action: {
-            tv.connect(to: saved.host)
-            dismiss()
-        }) {
+        Key(
+            shape: RoundedRectangle(cornerRadius: 18),
+            action: {
+                tv.connect(to: saved.host)
+                dismiss()
+            }
+        ) {
             HStack(spacing: 14) {
                 glyph(active: false)
                 VStack(alignment: .leading, spacing: 4) {
@@ -602,7 +612,6 @@ struct TVsSheet: View {
         editing = false
     }
 }
-
 
 /// A still of the TV's screen: save it or send it on.
 struct ScreenshotSheet: View {
@@ -677,8 +686,7 @@ struct ScreenshotSheet: View {
         .foregroundStyle(Theme.ink)
         .animation(.easeOut(duration: 0.2), value: image != nil)
         .task {
-            do { image = try await tv.screenshot() }
-            catch { failure = "Couldn't get a screenshot: \(error.localizedDescription)" }
+            do { image = try await tv.screenshot() } catch { failure = "Couldn't get a screenshot: \(error.localizedDescription)" }
         }
     }
 
@@ -755,7 +763,11 @@ struct SonosSheet: View {
                 ZStack {
                     RoundedRectangle(cornerRadius: 12).fill(Theme.background)
                     if let art = sonos.track?.art {
-                        AsyncImage(url: art) { image in image.resizable().scaledToFill() } placeholder: { Color.clear }
+                        AsyncImage(url: art) { image in
+                            image.resizable().scaledToFill()
+                        } placeholder: {
+                            Color.clear
+                        }
                     } else {
                         Image(systemName: sonos.onTV ? "tv" : sonos.fromAirPlay ? "iphone" : "music.note")
                             .font(.system(size: 20, weight: .medium))
@@ -871,7 +883,9 @@ struct SonosSheet: View {
                 }
             }
             HStack(spacing: 8) {
-                chip("Off", active: sonos.sleepLeft == nil) { sonos.sleep(minutes: nil); sleepPick = nil }
+                chip("Off", active: sonos.sleepLeft == nil) {
+                    sonos.sleep(minutes: nil); sleepPick = nil
+                }
                 ForEach([15, 30, 60, 90], id: \.self) { minutes in
                     chip("\(minutes)", active: sonos.sleepLeft != nil && sleepPick == minutes) {
                         sonos.sleep(minutes: minutes)
@@ -898,7 +912,6 @@ struct SonosSheet: View {
         .buttonStyle(Pressable())
     }
 }
-
 
 /// A level drawn as a row of dots with a knob: drag along it, it saves when you let go.
 /// Signed levels (the Sub) light from the center mark outwards.
@@ -969,7 +982,6 @@ struct DotTrack: View {
         signed ? (f >= min(at, zero) - 0.001 && f <= max(at, zero) + 0.001 && abs(at - zero) > 0.001) : f <= at + 0.001
     }
 }
-
 
 /// Sends this phone's audio to the Sonos (or back) through iOS's own AirPlay
 /// picker: the only thing allowed to move a phone's sound. One tap opens it.
@@ -1103,7 +1115,9 @@ struct RemoteSettingsSheet: View {
                         .autocorrectionDisabled()
                         .textInputAutocapitalization(.never)
                     if !query.isEmpty {
-                        Button { query = "" } label: {
+                        Button {
+                            query = ""
+                        } label: {
                             Image(systemName: "xmark.circle.fill").foregroundStyle(Theme.muted)
                         }
                     }
@@ -1142,13 +1156,15 @@ struct RemoteSettingsSheet: View {
                 withAnimation(.easeInOut(duration: 0.2)) { pins.remove(app.id) }
             } label: {
                 AppIcon(app: app, radius: 25, inset: 0, zoom: 1.35)
-                .frame(maxWidth: .infinity)
-                .frame(height: 50)
-                // White pills get a dark line just inside the edge, in both modes: a light one blurs into the white.
-                .overlay(Color.isPale(app.color)
-                         ? Capsule().strokeBorder(Color.black.opacity(0.22), lineWidth: 1)
-                         : Capsule().strokeBorder(Theme.ink.opacity(0.14), lineWidth: 1))
-                .shadow(color: .black.opacity(0.12), radius: 3, y: 1)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 50)
+                    // White pills get a dark line just inside the edge, in both modes: a light one blurs into the white.
+                    .overlay(
+                        Color.isPale(app.color)
+                            ? Capsule().strokeBorder(Color.black.opacity(0.22), lineWidth: 1)
+                            : Capsule().strokeBorder(Theme.ink.opacity(0.14), lineWidth: 1)
+                    )
+                    .shadow(color: .black.opacity(0.12), radius: 3, y: 1)
                     .overlay(alignment: .topLeading) {
                         // Its place on the remote, as a badge on the corner.
                         Text("\(index + 1)")
@@ -1177,8 +1193,10 @@ struct RemoteSettingsSheet: View {
         } else {
             let next = index == six.count
             Capsule()
-                .strokeBorder(next ? Theme.accent : Theme.muted.opacity(0.4),
-                              style: StrokeStyle(lineWidth: next ? 2 : 1.5, lineCap: .round, dash: next ? [6, 5] : [0.1, 6]))
+                .strokeBorder(
+                    next ? Theme.accent : Theme.muted.opacity(0.4),
+                    style: StrokeStyle(lineWidth: next ? 2 : 1.5, lineCap: .round, dash: next ? [6, 5] : [0.1, 6])
+                )
                 .background(next ? Theme.accent.opacity(0.06) : .clear, in: Capsule())
                 .frame(height: 50)
                 .overlay {

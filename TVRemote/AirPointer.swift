@@ -26,7 +26,7 @@ final class AirPointer: ObservableObject {
         guard !active, motion.isDeviceMotionAvailable else { return }
         active = true
         carry = (0, 0)
-        tv.move(dx: 0, dy: 0)   // wakes the pointer up on screen
+        tv.move(dx: 0, dy: 0)  // wakes the pointer up on screen
         motion.deviceMotionUpdateInterval = 1 / rate
         motion.startDeviceMotionUpdates(to: .main) { [weak self, weak tv] data, _ in
             guard let self, let tv, let spin = data?.rotationRate else { return }
