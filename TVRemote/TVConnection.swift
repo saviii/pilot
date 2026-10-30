@@ -282,7 +282,7 @@ final class TVConnection: ObservableObject {
                     "CONTROL_INPUT_JOYSTICK", "CONTROL_INPUT_MEDIA_PLAYBACK",
                     "CONTROL_INPUT_TEXT", "CONTROL_MOUSE_AND_KEYBOARD", "CONTROL_INPUT_TV",
                     "READ_INSTALLED_APPS", "READ_RUNNING_APPS", "READ_APP_STATUS",
-                    "READ_POWER_STATE", "READ_SETTINGS", "READ_INPUT_DEVICE_LIST", "CAPTURE_TV_SCREEN",
+                    "READ_POWER_STATE", "READ_SETTINGS", "READ_INPUT_DEVICE_LIST", "CAPTURE_TV_SCREEN", "READ_NETWORK_STATE",
                     "WRITE_NOTIFICATION_TOAST",
                 ],
             ],
@@ -521,7 +521,8 @@ final class TVConnection: ObservableObject {
 
     /// Learns the TV's network address while it's on, so it can be woken later.
     private func learnAddress() async {
-        guard let host, let info = try? await request("ssap://com.webos.service.connectionmanager/getinfo") else { return }
+        guard let host else { return }
+        guard let info = try? await request("ssap://com.webos.service.connectionmanager/getinfo") else { return }
         let wifi = (info["wifiInfo"] as? [String: Any])?["macAddress"] as? String
         let wired = (info["wiredInfo"] as? [String: Any])?["macAddress"] as? String
         if let mac = wifi ?? wired, mac.split(separator: ":").count == 6 {
