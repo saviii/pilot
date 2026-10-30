@@ -74,10 +74,6 @@ private struct TopBar: View {
     var body: some View {
         HStack(spacing: 12) {
             Menu {
-                Picker("Appearance", selection: $appearance) {
-                    ForEach(Appearance.allCases) { Text($0.title).tag($0) }
-                }
-                .pickerStyle(.menu)
                 Button("Forget this TV", role: .destructive) { tv.forget() }
             } label: {
                 HStack(spacing: 8) {
@@ -98,10 +94,27 @@ private struct TopBar: View {
                 .animation(.easeOut(duration: 0.2), value: tv.state == .connected)
             }
             Spacer()
+            AppearanceKey(appearance: $appearance)
             IconKey(symbol: "cable.connector", size: 44) { sheet = .inputs }
             IconKey(symbol: "gearshape.fill", size: 44) { tv.press(.settings) }
             PowerKey()
         }
+    }
+}
+
+/// One key that cycles System → Light → Dark; its icon shows the current one.
+private struct AppearanceKey: View {
+    @Binding var appearance: Appearance
+
+    var body: some View {
+        Key(shape: Circle(), action: { appearance = appearance.next }) {
+            Image(systemName: appearance.symbol)
+                .font(.system(size: 14, weight: .semibold))
+                .contentTransition(.symbolEffect(.replace))
+                .frame(width: 44, height: 44)
+        }
+        .accessibilityLabel("Appearance")
+        .accessibilityValue(appearance.title)
     }
 }
 
