@@ -41,16 +41,24 @@ struct RemoteView: View {
         .padding(.top, 8)
         .padding(.bottom, 8)
         .background(Theme.background.ignoresSafeArea())
+        // The phone's keyboard covers the remote rather than squashing it.
+        .ignoresSafeArea(.keyboard)
         #if DEBUG
         .onAppear {
             if CommandLine.arguments.contains("-apps") { sheet = .apps }
             if CommandLine.arguments.contains("-tvs") { sheet = .tvs }
+            if CommandLine.arguments.contains("-kb") { sheet = .keyboard }
         }
         #endif
+        // When the TV asks for text, the keyboard comes up on its own, and goes when the TV's does.
+        .onChange(of: tv.keyboardOpen) { _, open in
+            if open, sheet == nil { sheet = .keyboard }
+            if !open, sheet == .keyboard { sheet = nil }
+        }
         .sheet(item: $sheet) { kind in
             Group {
                 switch kind {
-                case .keyboard: KeyboardSheet().presentationDetents([.height(170)])
+                case .keyboard: KeyboardSheet().presentationDetents([.height(220)])
                 case .inputs: InputsSheet().presentationDetents([.medium])
                 case .apps: AppsSheet().presentationDetents([.large])
                 case .tvs: TVsSheet().presentationDetents([.height(CGFloat(170 + tv.saved.count * 100))])

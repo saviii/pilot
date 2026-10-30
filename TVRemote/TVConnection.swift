@@ -59,6 +59,8 @@ final class TVConnection: ObservableObject {
     @Published private(set) var foreground: String?
     /// "playing", "paused", … for the app on screen, when it reports one.
     @Published var playState: String?
+    /// The TV's own keyboard is up: a text field on screen wants typing.
+    @Published private(set) var keyboardOpen = false
     @Published private(set) var host: String? = UserDefaults.standard.string(forKey: "host")
 
     /// Every TV this phone has paired with.
@@ -349,6 +351,12 @@ final class TVConnection: ObservableObject {
         subscribe("ssap://com.webos.applicationManager/getForegroundAppInfo") { [weak self] payload in
             self?.foreground = payload["appId"] as? String
         }
+        subscribe("ssap://com.webos.service.ime/registerRemoteKeyboard") { [weak self] payload in
+            log("\(self?.foreground ?? "?") keyboard \(payload)", "ime")
+            if let widget = payload["currentWidget"] as? [String: Any] {
+                self?.keyboardOpen = widget["focus"] as? Bool ?? false
+            }
+        }
         subscribe("ssap://com.webos.media/getForegroundAppInfo") { [weak self] payload in
             let info = (payload["foregroundAppInfo"] as? [[String: Any]])?.first
             log("\(self?.foreground ?? "?"): \(info?["playState"] as? String ?? "none")", "media")
@@ -485,15 +493,37 @@ final class TVConnection: ObservableObject {
     func play() { run("ssap://media.controls/play") }
     func pause() { run("ssap://media.controls/pause") }
 
-    func type(_ text: String) {
-        run("ssap://com.webos.service.ime/insertText", ["text": text, "replace": 0])
+    // MARK: Typing
+
+    func type(_ text: String) { ime("insertText", ["text": text, "replace": 0]) }
+    func deleteCharacters(_ count: Int) { ime("deleteCharacters", ["count": count]) }
+    func sendEnter() { ime("sendEnterKey") }
+
+    /// YouTube's TV app draws its own keyboard and ignores typed text, so we
+    /// open its search results directly instead.
+    static let youtube = "youtube.leanback.v4"
+
+    func searchYouTube(_ query: String) {
+        var parts = URLComponents()
+        parts.queryItems = [URLQueryItem(name: "q", value: query)]
+        let target = "https://www.youtube.com/tv#/search?\(parts.percentEncodedQuery ?? "")"
+        Task {
+            let reply = try? await request("ssap://system.launcher/launch", ["id": Self.youtube, "params": ["contentTarget": target]])
+            log("youtube search \(target) → \(reply ?? [:])", "ime")
+        }
     }
 
-    func deleteCharacters(_ count: Int) {
-        run("ssap://com.webos.service.ime/deleteCharacters", ["count": count])
+    /// Sends to the TV's system keyboard, logging whether it took it.
+    private func ime(_ method: String, _ payload: [String: Any] = [:]) {
+        Task {
+            do {
+                let reply = try await request("ssap://com.webos.service.ime/\(method)", payload)
+                log("\(foreground ?? "?") \(method) \(payload) → \(reply)", "ime")
+            } catch {
+                log("\(foreground ?? "?") \(method) \(payload) → error \(error.localizedDescription)", "ime")
+            }
+        }
     }
-
-    func sendEnter() { run("ssap://com.webos.service.ime/sendEnterKey") }
 }
 
 /// Saves a raw TV response to the app's Documents folder, for debugging from the Mac.

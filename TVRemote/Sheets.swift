@@ -1,43 +1,113 @@
 import SwiftUI
 
-/// Whatever you type here shows up in the TV's focused text box.
+/// Typing on the TV. Most apps take text live through LG's keyboard; YouTube
+/// draws its own and ignores it, so there the field becomes a YouTube search.
 struct KeyboardSheet: View {
     @EnvironmentObject private var tv: TVConnection
     @Environment(\.dismiss) private var dismiss
     @State private var text = ""
     @FocusState private var focused: Bool
+    @AppStorage("recentSearches") private var recentRaw = ""
+
+    private var youtube: Bool { tv.foreground == TVConnection.youtube }
+    private var recents: [String] { recentRaw.split(separator: "\n").map(String.init) }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Caption("Type on TV")
-            TextField("", text: $text)
-                .font(.title3)
-                .foregroundStyle(Theme.ink)
-                .tint(Theme.accent)
-                .padding(16)
-                .background(Theme.key, in: RoundedRectangle(cornerRadius: 14))
-                .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.hairline))
-                .focused($focused)
-                .autocorrectionDisabled()
-                .textInputAutocapitalization(.never)
-                .submitLabel(.search)
-                .onSubmit {
-                    tv.sendEnter()
-                    dismiss()
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 12) {
+                if let app = tv.foregroundApp {
+                    AppIcon(app: app, radius: 7, inset: 2).frame(width: 32, height: 32)
                 }
-                .onChange(of: text) { old, new in
-                    if new.hasPrefix(old) {
-                        tv.type(String(new.dropFirst(old.count)))
-                    } else if old.hasPrefix(new) {
-                        tv.deleteCharacters(old.count - new.count)
-                    } else {
-                        tv.deleteCharacters(old.count)
-                        tv.type(new)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(youtube ? "Search YouTube" : "Type on \(tv.current?.name ?? "the TV")")
+                        .font(.headline)
+                    Caption(youtube ? "Results open when you press search" : "Shows on the TV as you type")
+                }
+                Spacer()
+                Button("Done") { dismiss() }
+                    .font(Theme.mono(12))
+                    .foregroundStyle(Theme.accent)
+            }
+
+            HStack(spacing: 10) {
+                Image(systemName: youtube ? "magnifyingglass" : "keyboard")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(Theme.muted)
+                TextField(youtube ? "Search" : "Type", text: $text)
+                    .font(.title3)
+                    .tint(Theme.accent)
+                    .focused($focused)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                    .submitLabel(youtube ? .search : .send)
+                    .onSubmit(submit)
+                if !text.isEmpty {
+                    Button {
+                        if !youtube { tv.deleteCharacters(text.count) }
+                        text = ""
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 17))
+                            .foregroundStyle(Theme.muted)
                     }
+                    .transition(.opacity)
                 }
+            }
+            .padding(.horizontal, 16)
+            .frame(height: 56)
+            .background(Theme.key, in: RoundedRectangle(cornerRadius: 16))
+            .overlay(RoundedRectangle(cornerRadius: 16).stroke(focused ? Theme.accent.opacity(0.6) : Theme.hairline, lineWidth: 1))
+            .animation(.easeOut(duration: 0.15), value: text.isEmpty)
+            .animation(.easeOut(duration: 0.15), value: focused)
+            .onChange(of: text) { old, new in
+                guard !youtube else { return }
+                if new.hasPrefix(old) {
+                    tv.type(String(new.dropFirst(old.count)))
+                } else if old.hasPrefix(new) {
+                    tv.deleteCharacters(old.count - new.count)
+                } else {
+                    tv.deleteCharacters(old.count)
+                    tv.type(new)
+                }
+            }
+
+            if !recents.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(recents, id: \.self) { query in
+                            Button {
+                                haptic()
+                                if !youtube { tv.deleteCharacters(text.count) }
+                                text = query
+                                submit()
+                            } label: {
+                                Text(query)
+                                    .font(Theme.mono(12))
+                                    .lineLimit(1)
+                                    .padding(.horizontal, 14)
+                                    .frame(height: 36)
+                            }
+                            .buttonStyle(KeyStyle(shape: Capsule()))
+                        }
+                    }
+                    .padding(.vertical, 2)
+                }
+                .contentMargins(.horizontal, 24, for: .scrollContent)
+                .padding(.horizontal, -24)
+            }
         }
         .padding(24)
+        .foregroundStyle(Theme.ink)
         .onAppear { focused = true }
+    }
+
+    private func submit() {
+        let query = text.trimmingCharacters(in: .whitespaces)
+        guard !query.isEmpty else { return }
+        haptic(.medium)
+        if youtube { tv.searchYouTube(query) } else { tv.sendEnter() }
+        recentRaw = ([query] + recents.filter { $0 != query }).prefix(6).joined(separator: "\n")
+        dismiss()
     }
 }
 
