@@ -7,6 +7,7 @@ struct RemoteView: View {
     @EnvironmentObject private var tv: TVConnection
     @StateObject private var pointer = AirPointer()
     @StateObject private var buttons = VolumeButtons()
+    @StateObject private var sonos = Sonos()
     @Environment(\.scenePhase) private var scenePhase
     @State private var sheet: Sheet?
 
@@ -38,7 +39,7 @@ struct RemoteView: View {
             }
 
             Spacer(minLength: 16)
-            VolumeBar()
+            VolumeBar(sheet: $sheet)
             Spacer(minLength: 16)
             Playback()
         }
@@ -47,6 +48,8 @@ struct RemoteView: View {
         .padding(.bottom, 8)
         .background(Theme.background.ignoresSafeArea())
         .environmentObject(pointer)
+        .environmentObject(sonos)
+        .task { await sonos.findIfNeeded() }
         // The phone's side buttons turn the TV up and down while Pilot is open.
         .background(HiddenVolumeView(buttons: buttons).frame(width: 1, height: 1).offset(x: -200))
         .onAppear { buttons.start(tv) }
@@ -61,6 +64,9 @@ struct RemoteView: View {
             if CommandLine.arguments.contains("-apps") { sheet = .apps }
             if CommandLine.arguments.contains("-tvs") { sheet = .tvs }
             if CommandLine.arguments.contains("-kb") { sheet = .keyboard }
+            if CommandLine.arguments.contains("-sonos") {
+                Task { await sonos.findIfNeeded(); sheet = .sonos }
+            }
         }
         #endif
         // When the TV asks for text, the keyboard comes up on its own, and goes when the TV's does.
@@ -74,6 +80,7 @@ struct RemoteView: View {
                 case .keyboard: KeyboardSheet().presentationDetents([.height(tv.foregroundInput == nil ? 220 : 330)])
                 case .inputs: InputsSheet().presentationDetents([.medium, .large])
                 case .apps: AppsSheet().presentationDetents([.large])
+                case .sonos: SonosSheet().environmentObject(sonos).presentationDetents([.large])
                 case .screenshot: ScreenshotSheet().presentationDetents([.height(400)])
                 case .tvs: TVsSheet().presentationDetents([.height(CGFloat(170 + tv.saved.count * 100))])
                 }
@@ -86,7 +93,7 @@ struct RemoteView: View {
 }
 
 enum Sheet: String, Identifiable {
-    case keyboard, inputs, apps, tvs, screenshot
+    case keyboard, inputs, apps, tvs, screenshot, sonos
     var id: String { rawValue }
 }
 
@@ -479,6 +486,8 @@ private struct PointerKey: View {
 /// tap the level to mute.
 private struct VolumeBar: View {
     @EnvironmentObject private var tv: TVConnection
+    @EnvironmentObject private var sonos: Sonos
+    @Binding var sheet: Sheet?
 
     var body: some View {
         HStack(spacing: 4) {
@@ -489,6 +498,15 @@ private struct VolumeBar: View {
             step("plus", shape: UnevenRoundedRectangle(topLeadingRadius: 8, bottomLeadingRadius: 8,
                                                       bottomTrailingRadius: 32, topTrailingRadius: 32),
                  action: tv.volumeUp)
+            // The Sonos's own controls, once Pilot has found one.
+            if sonos.host != nil {
+                Key(shape: Circle(), action: { sheet = .sonos }) {
+                    Image(systemName: "hifispeaker.2.fill")
+                        .font(.system(size: 16, weight: .semibold))
+                        .frame(width: 56, height: 56)
+                }
+                .padding(.leading, 6)
+            }
         }
     }
 
@@ -496,7 +514,7 @@ private struct VolumeBar: View {
         Key(repeats: true, shape: shape, action: action) {
             Image(systemName: symbol)
                 .font(.system(size: 18, weight: .bold))
-                .frame(width: 76, height: 64)
+                .frame(width: sonos.host == nil ? 76 : 60, height: 64)
         }
     }
 }

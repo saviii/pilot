@@ -14,6 +14,7 @@
 		4F6F27EB18FD9B0FF713D7AB /* TVRemoteApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94A46E339FC62F654E112631 /* TVRemoteApp.swift */; };
 		568BBF769055F8A3F03818E4 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E8FAD32B58451258682B3FA /* Theme.swift */; };
 		57D747DA0BA1A1EE0F1F6239 /* TVFinder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8891D0439FD45DB92057E43D /* TVFinder.swift */; };
+		61E3C0F87B71ED8C6B98D2A2 /* Sonos.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53B40821D243D5E1AC89BC46 /* Sonos.swift */; };
 		69AD879059E7E4E7A025559F /* MartianMono.ttf in Resources */ = {isa = PBXBuildFile; fileRef = E2292D60B17F487AF0932F82 /* MartianMono.ttf */; };
 		791ABA1C818156C7E76579B5 /* PilotWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1E9725E3C62FD3F5B8CAB7 /* PilotWidgets.swift */; };
 		7C0B16A58732E45AA992486C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 7710BFB4F02645288E5B22EE /* Assets.xcassets */; };
@@ -57,6 +58,7 @@
 		3E8FAD32B58451258682B3FA /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		4A925A32C00EA5E0EA005803 /* TVRemote.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = TVRemote.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		4E6996BE3ECFE60032881D83 /* VolumeButtons.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VolumeButtons.swift; sourceTree = "<group>"; };
+		53B40821D243D5E1AC89BC46 /* Sonos.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sonos.swift; sourceTree = "<group>"; };
 		5F35B480751C62CB57DAA050 /* RemoteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteView.swift; sourceTree = "<group>"; };
 		7710BFB4F02645288E5B22EE /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		78052858A15657E3BC7A7C2E /* PilotWidgets.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = PilotWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -85,6 +87,7 @@
 				C1F9BDC6B4AE9C929C47CB86 /* LiveRemote.swift */,
 				5F35B480751C62CB57DAA050 /* RemoteView.swift */,
 				D8F8E21A290A84DE2791A6AF /* Sheets.swift */,
+				53B40821D243D5E1AC89BC46 /* Sonos.swift */,
 				3E8FAD32B58451258682B3FA /* Theme.swift */,
 				B3E0F19D6E88F4A6B7E0FB33 /* TVConnection.swift */,
 				8891D0439FD45DB92057E43D /* TVFinder.swift */,
@@ -253,6 +256,7 @@
 				F40529BA7B795188480B905B /* PilotActivity.swift in Sources */,
 				B184FDE3200BEC03F95B7BBE /* RemoteView.swift in Sources */,
 				F503EA355FA14715C6C82F7A /* Sheets.swift in Sources */,
+				61E3C0F87B71ED8C6B98D2A2 /* Sonos.swift in Sources */,
 				4E74EF105D27D5CBFE43E3B5 /* TVConnection.swift in Sources */,
 				57D747DA0BA1A1EE0F1F6239 /* TVFinder.swift in Sources */,
 				4F6F27EB18FD9B0FF713D7AB /* TVRemoteApp.swift in Sources */,

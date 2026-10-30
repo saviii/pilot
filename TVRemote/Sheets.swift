@@ -609,3 +609,194 @@ struct ScreenshotSheet: View {
             .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.hairline))
     }
 }
+
+/// The Sonos: what it's playing, its TV sound settings and its sleep timer.
+/// Every switch here is yours; nothing turns on by itself.
+struct SonosSheet: View {
+    @EnvironmentObject private var sonos: Sonos
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                HStack(spacing: 12) {
+                    Image(systemName: "hifispeaker.2.fill")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(Theme.accent)
+                        .frame(width: 36, height: 36)
+                        .background(Theme.key, in: RoundedRectangle(cornerRadius: 9))
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(sonos.room).font(.headline)
+                        Caption(sonos.model.isEmpty ? "Sonos" : sonos.model)
+                    }
+                    Spacer()
+                    Button("Done") { dismiss() }
+                        .font(Theme.mono(12))
+                        .foregroundStyle(Theme.accent)
+                }
+
+                nowPlaying
+
+                VStack(spacing: 0) {
+                    toggle("Speech Enhancement", "Clearer dialogue", isOn: Binding(get: { sonos.speech }, set: sonos.setSpeech))
+                    Divider().overlay(Theme.hairline).padding(.leading, 16)
+                    toggle("Night Sound", "Quieter loud parts, louder quiet ones", isOn: Binding(get: { sonos.night }, set: sonos.setNight))
+                }
+                .background(Theme.key, in: RoundedRectangle(cornerRadius: 16))
+                .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.hairline))
+
+                level("Sub", value: $sonos.sub, range: -15...15, signed: true, commit: sonos.commitSub)
+                level("Sonos volume", value: $sonos.volume, range: 0...100, signed: false, commit: sonos.commitVolume)
+
+                sleep
+            }
+            .padding(24)
+        }
+        .foregroundStyle(Theme.ink)
+        .task {
+            // Keep what's showing current while the sheet is open.
+            while !Task.isCancelled {
+                await sonos.refresh()
+                try? await Task.sleep(for: .seconds(2))
+            }
+        }
+    }
+
+    // MARK: What's playing
+
+    @ViewBuilder
+    private var nowPlaying: some View {
+        HStack(spacing: 14) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 10).fill(Theme.background)
+                if let art = sonos.track?.art {
+                    AsyncImage(url: art) { image in image.resizable().scaledToFill() } placeholder: { Color.clear }
+                } else {
+                    Image(systemName: sonos.onTV ? "tv" : "music.note")
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundStyle(Theme.accent)
+                }
+            }
+            .frame(width: 56, height: 56)
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(sonos.onTV ? "TV sound" : sonos.track?.title ?? "Nothing playing")
+                    .font(.body.weight(.semibold)).lineLimit(1)
+                Caption(sonos.onTV ? "From the TV" : sonos.track?.artist ?? "Music")
+            }
+            Spacer(minLength: 0)
+
+            if !sonos.onTV {
+                HStack(spacing: 4) {
+                    small("backward.fill", sonos.previous)
+                    small(sonos.playing ? "pause.fill" : "play.fill", sonos.playPause)
+                    small("forward.fill", sonos.next)
+                }
+            }
+        }
+        .padding(14)
+        .background(Theme.key, in: RoundedRectangle(cornerRadius: 16))
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.hairline))
+
+        if !sonos.onTV {
+            Button {
+                haptic(.medium)
+                sonos.backToTV()
+            } label: {
+                Label("Back to TV sound", systemImage: "tv")
+                    .font(.subheadline.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 48)
+                    .foregroundStyle(Theme.background)
+                    .background(Theme.accent, in: RoundedRectangle(cornerRadius: 14))
+            }
+            .buttonStyle(Pressable())
+        }
+    }
+
+    private func small(_ symbol: String, _ action: @escaping () -> Void) -> some View {
+        Button {
+            haptic()
+            action()
+        } label: {
+            Image(systemName: symbol)
+                .font(.system(size: 14, weight: .semibold))
+                .contentTransition(.symbolEffect(.replace))
+                .frame(width: 38, height: 38)
+        }
+        .buttonStyle(KeyStyle(shape: Circle()))
+    }
+
+    // MARK: Settings
+
+    private func toggle(_ title: String, _ detail: String, isOn: Binding<Bool>) -> some View {
+        Toggle(isOn: isOn) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title).font(.body.weight(.medium))
+                Text(detail).font(.caption).foregroundStyle(Theme.muted)
+            }
+        }
+        .tint(Theme.accent)
+        .padding(.horizontal, 16)
+        .frame(height: 64)
+        .sensoryFeedback(.selection, trigger: isOn.wrappedValue)
+    }
+
+    private func level(_ title: String, value: Binding<Int>, range: ClosedRange<Int>, signed: Bool, commit: @escaping () -> Void) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Caption(title)
+                Spacer()
+                Text(signed && value.wrappedValue > 0 ? "+\(value.wrappedValue)" : "\(value.wrappedValue)")
+                    .font(Theme.dot(20))
+                    .foregroundStyle(Theme.accent)
+                    .monospacedDigit()
+            }
+            Slider(value: Binding(get: { Double(value.wrappedValue) }, set: { value.wrappedValue = Int($0.rounded()) }),
+                   in: Double(range.lowerBound)...Double(range.upperBound), step: 1) { editing in
+                if !editing { commit() }
+            }
+            .tint(Theme.accent)
+        }
+    }
+
+    // MARK: Sleep timer
+
+    private var sleep: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Caption("Sleep timer")
+                Spacer()
+                if let left = sonos.sleepLeft {
+                    Text(String(format: "%d:%02d", left / 60, left % 60))
+                        .font(Theme.dot(20))
+                        .foregroundStyle(Theme.accent)
+                        .monospacedDigit()
+                }
+            }
+            HStack(spacing: 8) {
+                chip("Off", active: sonos.sleepLeft == nil) { sonos.sleep(minutes: nil) }
+                ForEach([15, 30, 60, 90], id: \.self) { minutes in
+                    chip("\(minutes)", active: false) { sonos.sleep(minutes: minutes) }
+                }
+            }
+        }
+    }
+
+    private func chip(_ title: String, active: Bool, _ action: @escaping () -> Void) -> some View {
+        Button {
+            haptic()
+            action()
+        } label: {
+            Text(title)
+                .font(Theme.mono(12))
+                .frame(maxWidth: .infinity)
+                .frame(height: 40)
+                .foregroundStyle(active ? Theme.background : Theme.ink)
+                .background(active ? Theme.accent : Theme.key, in: Capsule())
+                .overlay(Capsule().stroke(active ? .clear : Theme.hairline))
+        }
+        .buttonStyle(Pressable())
+    }
+}
