@@ -323,7 +323,6 @@ final class TVConnection: ObservableObject {
     enum Button: String {
         case up = "UP", down = "DOWN", left = "LEFT", right = "RIGHT"
         case enter = "ENTER", back = "BACK", exit = "EXIT", home = "HOME", settings = "MENU"
-        case channelUp = "CHANNELUP", channelDown = "CHANNELDOWN"
         case play = "PLAY", pause = "PAUSE", rewind = "REWIND", fastForward = "FASTFORWARD"
         case red = "RED", green = "GREEN", yellow = "YELLOW", blue = "BLUE"
         case info = "INFO", guide = "GUIDE", captions = "CC", dash = "DASH"
@@ -339,8 +338,6 @@ final class TVConnection: ObservableObject {
     func volumeDown() { run("ssap://audio/volumeDown") }
     func toggleMute() { run("ssap://audio/setMute", ["mute": !muted]) }
     func powerOff() { run("ssap://system/turnOff") }
-    func channelUp() { run("ssap://tv/channelUp") }
-    func channelDown() { run("ssap://tv/channelDown") }
     func switchInput(_ input: Input) { run("ssap://tv/switchInput", ["inputId": input.id]) }
 
     func loadInputs() async {

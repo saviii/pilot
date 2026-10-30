@@ -1,8 +1,8 @@
 import SwiftUI
 
 /// Laid out like LG's own remote, top to bottom: power and inputs, app
-/// shortcut keys, the click wheel, back and home, volume and channel
-/// rockers, then playback.
+/// shortcut keys, the click wheel, back and home, volume, then playback.
+/// No channel keys: everything here is apps, so up and down is the wheel's job.
 struct RemoteView: View {
     @EnvironmentObject private var tv: TVConnection
     @State private var pointer = false
@@ -18,7 +18,7 @@ struct RemoteView: View {
             Group {
                 if pointer { Trackpad() } else { ClickWheel() }
             }
-            .frame(maxWidth: 290, maxHeight: 290)
+            .frame(maxWidth: 310, maxHeight: 310)
             .aspectRatio(1, contentMode: .fit)
 
             Spacer(minLength: 16)
@@ -27,12 +27,13 @@ struct RemoteView: View {
                 Spacer()
                 IconKey(symbol: "house.fill") { tv.press(.home) }
                 Spacer()
+                IconKey(symbol: "keyboard") { sheet = .keyboard }
+                Spacer()
                 IconKey(symbol: "cursorarrow", tint: pointer ? Theme.accent : Theme.ink) { pointer.toggle() }
             }
-            .padding(.horizontal, 12)
 
             Spacer(minLength: 16)
-            Rockers(sheet: $sheet)
+            VolumeBar()
             Spacer(minLength: 16)
             Playback(sheet: $sheet)
         }
@@ -66,15 +67,22 @@ enum Sheet: String, Identifiable {
 private struct TopBar: View {
     @EnvironmentObject private var tv: TVConnection
     @Binding var sheet: Sheet?
+    @AppStorage("appearance") private var appearance: Appearance = .system
 
     var body: some View {
         HStack(spacing: 12) {
-            HStack(spacing: 8) {
-                Circle().fill(Theme.accent).frame(width: 6, height: 6)
-                Caption("LG · \(tv.host ?? "")")
-            }
-            .contextMenu {
+            Menu {
+                Picker("Appearance", selection: $appearance) {
+                    ForEach(Appearance.allCases) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.menu)
                 Button("Forget this TV", role: .destructive) { tv.forget() }
+            } label: {
+                HStack(spacing: 8) {
+                    Circle().fill(Theme.accent).frame(width: 6, height: 6)
+                    Caption("LG · \(tv.host ?? "")")
+                }
+                .frame(height: 44)
             }
             Spacer()
             IconKey(symbol: "cable.connector", size: 44) { sheet = .inputs }
@@ -324,63 +332,46 @@ private struct Trackpad: View {
     }
 }
 
-// MARK: - Volume and channel
+// MARK: - Volume
 
-private struct Rockers: View {
+/// One bar: hold − or + to keep going, tap the level to mute.
+private struct VolumeBar: View {
     @EnvironmentObject private var tv: TVConnection
-    @Binding var sheet: Sheet?
 
     var body: some View {
-        HStack(alignment: .center) {
-            Rocker(label: "VOL", up: "plus", down: "minus", onUp: tv.volumeUp, onDown: tv.volumeDown)
-            Spacer()
-            VStack(spacing: 14) {
-                VStack(spacing: 4) {
-                    Text(tv.muted ? "--" : tv.volume.map { String(format: "%02d", $0) } ?? "--")
-                        .font(Theme.dot(46))
+        HStack(spacing: 4) {
+            step("minus", shape: UnevenRoundedRectangle(topLeadingRadius: 32, bottomLeadingRadius: 32,
+                                                       bottomTrailingRadius: 8, topTrailingRadius: 8),
+                 action: tv.volumeDown)
+
+            Key(shape: RoundedRectangle(cornerRadius: 8), action: tv.toggleMute) {
+                HStack(spacing: 10) {
+                    Image(systemName: tv.muted ? "speaker.slash.fill" : "speaker.wave.2.fill")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(tv.muted ? Theme.accent : Theme.muted)
+                        .frame(width: 22)
+                    Text(tv.volume.map { String(format: "%02d", $0) } ?? "--")
+                        .font(Theme.dot(34))
                         .foregroundStyle(tv.muted ? Theme.muted : Theme.accent)
                         .monospacedDigit()
                         .contentTransition(.numericText())
                         .animation(.easeOut(duration: 0.15), value: tv.volume)
-                    Caption(tv.muted ? "Muted" : "Volume")
                 }
-                HStack(spacing: 12) {
-                    IconKey(symbol: "speaker.slash.fill", size: 48,
-                            tint: tv.muted ? Theme.accent : Theme.ink) { tv.toggleMute() }
-                    IconKey(symbol: "keyboard", size: 48) { sheet = .keyboard }
-                }
+                .frame(maxWidth: .infinity)
+                .frame(height: 64)
             }
-            Spacer()
-            Rocker(label: "CH", up: "chevron.up", down: "chevron.down",
-                   onUp: { tv.press(.channelUp) }, onDown: { tv.press(.channelDown) })
-        }
-    }
-}
 
-private struct Rocker: View {
-    let label: String
-    let up: String
-    let down: String
-    let onUp: () -> Void
-    let onDown: () -> Void
-
-    var body: some View {
-        VStack(spacing: 0) {
-            half(up, top: true, action: onUp)
-            Caption(label).frame(height: 26)
-            half(down, top: false, action: onDown)
+            step("plus", shape: UnevenRoundedRectangle(topLeadingRadius: 8, bottomLeadingRadius: 8,
+                                                      bottomTrailingRadius: 32, topTrailingRadius: 32),
+                 action: tv.volumeUp)
         }
     }
 
-    private func half(_ symbol: String, top: Bool, action: @escaping () -> Void) -> some View {
-        let big: CGFloat = 32, small: CGFloat = 8
-        let shape = UnevenRoundedRectangle(
-            topLeadingRadius: top ? big : small, bottomLeadingRadius: top ? small : big,
-            bottomTrailingRadius: top ? small : big, topTrailingRadius: top ? big : small)
-        return Key(repeats: true, shape: shape, action: action) {
+    private func step(_ symbol: String, shape: UnevenRoundedRectangle, action: @escaping () -> Void) -> some View {
+        Key(repeats: true, shape: shape, action: action) {
             Image(systemName: symbol)
-                .font(.system(size: 17, weight: .bold))
-                .frame(width: 64, height: 66)
+                .font(.system(size: 18, weight: .bold))
+                .frame(width: 84, height: 64)
         }
     }
 }

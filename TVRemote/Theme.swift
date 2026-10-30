@@ -1,14 +1,40 @@
 import SwiftUI
 
-/// Colors and type from savi.fyi's default dark scheme.
+/// System, light or dark. Stored, and applied at the app's root.
+enum Appearance: String, CaseIterable, Identifiable {
+    case system, light, dark
+    var id: String { rawValue }
+    var title: String { rawValue.capitalized }
+    var scheme: ColorScheme? {
+        switch self {
+        case .system: nil
+        case .light: .light
+        case .dark: .dark
+        }
+    }
+}
+
+/// Colors and type from savi.fyi's default scheme, light and dark.
 enum Theme {
-    static let background = Color(red: 13 / 255, green: 4 / 255, blue: 2 / 255)
-    static let key = Color(red: 28 / 255, green: 12 / 255, blue: 9 / 255)
-    static let keyPressed = Color(red: 44 / 255, green: 19 / 255, blue: 13 / 255)
-    static let ink = Color(red: 255 / 255, green: 236 / 255, blue: 228 / 255)
-    static let muted = ink.opacity(0.45)
-    static let hairline = Color.white.opacity(0.07)
-    static let accent = Color(red: 255 / 255, green: 85 / 255, blue: 26 / 255)
+    static let background = adaptive(light: (246, 240, 236), dark: (13, 4, 2))
+    static let key = adaptive(light: (252, 250, 248), dark: (28, 12, 9))
+    static let keyPressed = adaptive(light: (236, 227, 221), dark: (44, 19, 13))
+    static let ink = adaptive(light: (27, 14, 9), dark: (255, 236, 228))
+    static let muted = adaptive(light: (27, 14, 9, 0.55), dark: (255, 236, 228, 0.45))
+    static let hairline = adaptive(light: (27, 14, 9, 0.09), dark: (255, 255, 255, 0.07))
+    static let shadow = adaptive(light: (27, 14, 9, 0.06), dark: (0, 0, 0, 0))
+    static let accent = adaptive(light: (226, 62, 26), dark: (255, 85, 26))
+
+    private static func adaptive(light: (Int, Int, Int), dark: (Int, Int, Int)) -> Color {
+        adaptive(light: (light.0, light.1, light.2, 1), dark: (dark.0, dark.1, dark.2, 1))
+    }
+
+    private static func adaptive(light: (Int, Int, Int, Double), dark: (Int, Int, Int, Double)) -> Color {
+        Color(UIColor { traits in
+            let c = traits.userInterfaceStyle == .dark ? dark : light
+            return UIColor(red: CGFloat(c.0) / 255, green: CGFloat(c.1) / 255, blue: CGFloat(c.2) / 255, alpha: c.3)
+        })
+    }
 
     /// Doto, the dot-matrix face, for numbers.
     static func dot(_ size: CGFloat) -> Font { .custom("Doto", size: size).weight(.black) }
@@ -38,6 +64,7 @@ struct Key<Label: View, Background: Shape>: View {
             .foregroundStyle(Theme.ink)
             .background(pressed ? Theme.keyPressed : Theme.key, in: shape)
             .overlay(shape.stroke(Theme.hairline, lineWidth: 1))
+            .shadow(color: pressed ? .clear : Theme.shadow, radius: 2, y: 1)
             .contentShape(shape)
             .scaleEffect(pressed ? 0.97 : 1)
             .animation(.easeOut(duration: 0.15), value: pressed)

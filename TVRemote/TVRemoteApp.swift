@@ -4,6 +4,7 @@ import SwiftUI
 struct TVRemoteApp: App {
     @StateObject private var tv = TVConnection()
     @Environment(\.scenePhase) private var scenePhase
+    @AppStorage("appearance") private var appearance: Appearance = .system
 
     var body: some Scene {
         WindowGroup {
@@ -15,7 +16,7 @@ struct TVRemoteApp: App {
                 }
             }
             .environmentObject(tv)
-            .preferredColorScheme(.dark)
+            .preferredColorScheme(appearance.scheme)
             .onChange(of: scenePhase) { _, phase in
                 #if DEBUG
                 if CommandLine.arguments.contains("-demo") { return tv.demo() }
