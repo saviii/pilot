@@ -54,20 +54,50 @@ private struct LockScreenPanel: View {
     let state: PilotActivityAttributes.ContentState
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Circle().fill(Look.accent).frame(width: 6, height: 6)
-                Text(state.tv.uppercased()).font(Look.mono(10)).foregroundStyle(Look.muted)
-                if let app = state.app {
-                    Text("· \(app)").font(.caption).foregroundStyle(Look.ink.opacity(0.8)).lineLimit(1)
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 10) {
+                // What's on, in its own color.
+                ZStack {
+                    RoundedRectangle(cornerRadius: 9).fill(color(state.appColor) ?? Look.key)
+                    Text(state.app.map { String($0.prefix(1)) } ?? "")
+                        .font(Look.mono(12))
+                        .foregroundStyle(state.appColor == "#ffffff" ? Color.black : Color.white)
+                }
+                .frame(width: 32, height: 32)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(state.app ?? "TV").font(.system(size: 15, weight: .semibold)).lineLimit(1)
+                    Text("PILOT · \(state.tv.uppercased())").font(Look.mono(9)).foregroundStyle(Look.muted).lineLimit(1)
                 }
                 Spacer()
-                Level(state: state, size: 24)
+                VStack(alignment: .trailing, spacing: 5) {
+                    Level(state: state, size: 26)
+                    Meter(state: state)
+                }
             }
             Controls()
         }
         .padding(16)
         .foregroundStyle(Look.ink)
+    }
+
+    private func color(_ hex: String?) -> Color? {
+        guard let hex, hex.hasPrefix("#"), hex.count == 7, let v = Int(hex.dropFirst(), radix: 16) else { return nil }
+        return Color(red: Double((v >> 16) & 0xFF) / 255, green: Double((v >> 8) & 0xFF) / 255, blue: Double(v & 0xFF) / 255)
+    }
+}
+
+/// The level as a row of dots, out of 100.
+private struct Meter: View {
+    let state: PilotActivityAttributes.ContentState
+
+    var body: some View {
+        HStack(spacing: 3) {
+            ForEach(0..<8, id: \.self) { i in
+                Circle()
+                    .fill(!state.muted && Double(i) < (Double(state.volume ?? 0) / 100 * 8).rounded(.up) ? Look.accent : Look.ink.opacity(0.2))
+                    .frame(width: 3, height: 3)
+            }
+        }
     }
 }
 
@@ -84,24 +114,27 @@ private struct Level: View {
     }
 }
 
-/// − + for volume, then play and pause.
+/// − + for volume, then play and pause: two split keys, like the remote.
 private struct Controls: View {
     var body: some View {
-        HStack(spacing: 8) {
-            key("minus", .volumeDown)
-            key("plus", .volumeUp)
-            Spacer(minLength: 12)
-            key("play.fill", .play)
-            key("pause.fill", .pause)
+        HStack(spacing: 6) {
+            key("minus", .volumeDown, leading: true)
+            key("plus", .volumeUp, leading: false)
+            Spacer(minLength: 10)
+            key("play.fill", .play, leading: true)
+            key("pause.fill", .pause, leading: false)
         }
     }
 
-    private func key(_ symbol: String, _ action: TVAction) -> some View {
+    private func key(_ symbol: String, _ action: TVAction, leading: Bool) -> some View {
         Button(intent: TVActionIntent(action)) {
             Image(systemName: symbol)
                 .font(.system(size: 16, weight: .bold))
-                .frame(width: 56, height: 40)
-                .background(Look.key, in: Capsule())
+                .frame(maxWidth: .infinity)
+                .frame(height: 44)
+                .background(Look.key, in: UnevenRoundedRectangle(
+                    topLeadingRadius: leading ? 22 : 8, bottomLeadingRadius: leading ? 22 : 8,
+                    bottomTrailingRadius: leading ? 8 : 22, topTrailingRadius: leading ? 8 : 22))
         }
         .buttonStyle(.plain)
         .foregroundStyle(Look.ink)

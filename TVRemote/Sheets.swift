@@ -1,38 +1,38 @@
 import SwiftUI
 
 /// Typing on the TV. Most apps take text live through LG's keyboard; YouTube
-/// draws its own and ignores it, so there the field becomes a YouTube search.
-/// On an HDMI input (the PS5) text can't get through at all: there it's a YouTube
-/// search you play on the console (by casting from your phone) or on the TV.
+/// draws its own and ignores it, so there the field becomes a YouTube search,
+/// with one choice of where it plays: the TV's YouTube, or the console (cast
+/// from your phone, since text can't get through HDMI).
 struct KeyboardSheet: View {
     @EnvironmentObject private var tv: TVConnection
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
     @State private var text = ""
+    @State private var onConsole = false
     @FocusState private var focused: Bool
     @AppStorage("recentSearches") private var recentRaw = ""
 
     /// An HDMI input is on screen: text can't reach it, only the TV's own apps.
     private var input: TVConnection.Input? { tv.foregroundInput }
-    /// Search goes to the TV's YouTube: when it's on screen, or when you choose it over an input.
+    /// A console you could play YouTube on instead: the input on screen, or a PlayStation plugged in.
+    private var console: TVConnection.Input? {
+        input ?? tv.inputs.first { $0.connected && $0.label.contains("PlayStation") }
+    }
+    /// YouTube search mode: YouTube's on screen, or you're on an input (nothing else can take text there).
     private var youtube: Bool { tv.foreground == TVConnection.youtube || input != nil }
     private var recents: [String] { recentRaw.split(separator: "\n").map(String.init) }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 12) {
-                if let app = tv.foregroundApp {
-                    AppIcon(app: app, radius: 7, inset: 2).frame(width: 32, height: 32)
-                }
-                if let input {
-                    Image(systemName: input.label.contains("PlayStation") ? "gamecontroller.fill" : "cable.connector")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(Theme.accent)
-                        .frame(width: 32, height: 32)
-                        .background(Theme.key, in: RoundedRectangle(cornerRadius: 7))
+                if youtube, let app = tv.apps.first(where: { $0.id == TVConnection.youtube }) {
+                    AppIcon(app: app, radius: 10, inset: 3).frame(width: 36, height: 36)
+                } else if let app = tv.foregroundApp {
+                    AppIcon(app: app, radius: 10, inset: 3).frame(width: 36, height: 36)
                 }
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(title).font(.headline)
+                    Text(youtube ? "Search YouTube" : "Type on \(tv.current?.name ?? "the TV")").font(.headline)
                     Caption(subtitle)
                 }
                 Spacer()
@@ -41,16 +41,9 @@ struct KeyboardSheet: View {
                     .foregroundStyle(Theme.accent)
             }
 
-            if let input {
-                Text("Pilot can't type into the \(input.label). Search YouTube here and cast it from your phone, or open it on the TV's own YouTube.")
-                    .font(.subheadline)
-                    .foregroundStyle(Theme.muted)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            HStack(spacing: 10) {
+            HStack(spacing: 12) {
                 Image(systemName: youtube ? "magnifyingglass" : "keyboard")
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(Theme.muted)
                 TextField(youtube ? "Search YouTube" : "Type", text: $text)
                     .font(.title3)
@@ -66,16 +59,16 @@ struct KeyboardSheet: View {
                         text = ""
                     } label: {
                         Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 17))
+                            .font(.system(size: 18))
                             .foregroundStyle(Theme.muted)
                     }
                     .transition(.opacity)
                 }
             }
             .padding(.horizontal, 16)
-            .frame(height: 56)
-            .background(Theme.key, in: RoundedRectangle(cornerRadius: 16))
-            .overlay(RoundedRectangle(cornerRadius: 16).stroke(focused ? Theme.accent.opacity(0.6) : Theme.hairline, lineWidth: 1))
+            .frame(height: 58)
+            .background(Theme.key, in: RoundedRectangle(cornerRadius: 18))
+            .overlay(RoundedRectangle(cornerRadius: 18).stroke(focused ? Theme.accent.opacity(0.6) : Theme.hairline, lineWidth: 1))
             .animation(.easeOut(duration: 0.15), value: text.isEmpty)
             .animation(.easeOut(duration: 0.15), value: focused)
             .onChange(of: text) { old, new in
@@ -90,84 +83,88 @@ struct KeyboardSheet: View {
                 }
             }
 
-            if let input {
-                HStack(spacing: 10) {
-                    destination(input.label, symbol: input.label.contains("PlayStation") ? "gamecontroller.fill" : "cable.connector", primary: true) {
-                        submit()
-                    }
-                    destination("The TV", symbol: "tv", primary: false) {
-                        submit(onTV: true)
-                    }
+            // Where it plays.
+            if youtube, let console {
+                HStack(spacing: 4) {
+                    segment("The TV", symbol: "tv", on: !onConsole) { onConsole = false }
+                    segment(console.label, symbol: console.label.contains("PlayStation") ? "gamecontroller" : "cable.connector",
+                            on: onConsole) { onConsole = true }
                 }
-                .disabled(text.trimmingCharacters(in: .whitespaces).isEmpty)
-                .opacity(text.trimmingCharacters(in: .whitespaces).isEmpty ? 0.5 : 1)
-                .animation(.easeOut(duration: 0.15), value: text.isEmpty)
+                .padding(4)
+                .background(Theme.key, in: RoundedRectangle(cornerRadius: 16))
+                .animation(.easeOut(duration: 0.15), value: onConsole)
             }
 
             if !recents.isEmpty {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(recents, id: \.self) { query in
-                            Button {
-                                haptic()
-                                if !youtube { tv.deleteCharacters(text.count) }
-                                text = query
-                                submit()
-                            } label: {
-                                Text(query)
-                                    .font(Theme.mono(12))
-                                    .lineLimit(1)
-                                    .padding(.horizontal, 14)
-                                    .frame(height: 36)
+                VStack(alignment: .leading, spacing: 10) {
+                    Caption("Recent")
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(recents, id: \.self) { query in
+                                Button {
+                                    haptic()
+                                    if !youtube { tv.deleteCharacters(text.count) }
+                                    text = query
+                                    submit()
+                                } label: {
+                                    Text(query)
+                                        .font(Theme.mono(12))
+                                        .lineLimit(1)
+                                        .padding(.horizontal, 14)
+                                        .frame(height: 36)
+                                }
+                                .buttonStyle(KeyStyle(shape: Capsule()))
                             }
-                            .buttonStyle(KeyStyle(shape: Capsule()))
                         }
+                        .padding(.vertical, 2)
                     }
-                    .padding(.vertical, 2)
+                    .contentMargins(.horizontal, 24, for: .scrollContent)
+                    .padding(.horizontal, -24)
                 }
-                .contentMargins(.horizontal, 24, for: .scrollContent)
-                .padding(.horizontal, -24)
             }
         }
         .padding(24)
         .foregroundStyle(Theme.ink)
-        // On an input you're probably not typing, so don't throw the keyboard up.
-        .onAppear { focused = input == nil }
-    }
-
-    private var title: String {
-        if let input { return "Typing on \(input.label)" }
-        return youtube ? "Search YouTube" : "Type on \(tv.current?.name ?? "the TV")"
+        .onAppear {
+            // On the console already? Play there by default. And on an input you're
+            // probably not typing yet, so the phone keyboard waits for a tap.
+            onConsole = input != nil
+            focused = input == nil
+        }
     }
 
     private var subtitle: String {
-        if let input { return input.port.map { "HDMI \($0)" } ?? "Input" }
-        return youtube ? "Results open when you press search" : "Shows on the TV as you type"
+        guard youtube else { return "Shows on the TV as you type" }
+        if onConsole { return "Cast from your phone" }
+        return "Results open on the TV"
     }
 
-    /// "Play on" choice for an input: the console (primary) or the TV's own YouTube.
-    private func destination(_ title: String, symbol: String, primary: Bool, _ run: @escaping () -> Void) -> some View {
-        Button(action: run) {
+    private func segment(_ title: String, symbol: String, on: Bool, _ pick: @escaping () -> Void) -> some View {
+        Button {
+            haptic()
+            pick()
+        } label: {
             HStack(spacing: 8) {
                 Image(systemName: symbol).font(.system(size: 13, weight: .semibold))
-                Text(title).font(.subheadline.weight(.semibold)).lineLimit(1)
+                Text(title).font(.subheadline.weight(on ? .semibold : .medium)).lineLimit(1)
             }
             .frame(maxWidth: .infinity)
-            .frame(height: 48)
-            .foregroundStyle(primary ? Theme.background : Theme.ink)
-            .background(primary ? Theme.accent : Theme.key, in: RoundedRectangle(cornerRadius: 14))
-            .overlay(RoundedRectangle(cornerRadius: 14).stroke(primary ? .clear : Theme.hairline))
+            .frame(height: 44)
+            .foregroundStyle(on ? Theme.background : Theme.ink)
+            .background(on ? Theme.accent : .clear, in: RoundedRectangle(cornerRadius: 12))
+            .contentShape(RoundedRectangle(cornerRadius: 12))
         }
         .buttonStyle(Pressable())
+        .accessibilityAddTraits(on ? .isSelected : [])
     }
 
-    /// On an input, search opens YouTube on this phone (cast it to the console from
-    /// there) unless you chose the TV. Otherwise it goes to the TV.
-    private func submit(onTV: Bool = false) {
+    /// Search goes where "Play on" says: the TV's YouTube, or YouTube on this phone
+    /// to cast to the console. Outside YouTube, it's the TV's Enter key.
+    private func submit() {
         let query = text.trimmingCharacters(in: .whitespaces)
         guard !query.isEmpty else { return }
         haptic(.medium)
-        if input != nil && !onTV {
+        if youtube && onConsole {
             var parts = URLComponents(string: "https://www.youtube.com/results")!
             parts.queryItems = [URLQueryItem(name: "search_query", value: query)]
             if let url = parts.url { openURL(url) }
@@ -257,7 +254,11 @@ struct AppsSheet: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    Caption("On top")
+                    HStack {
+                        Caption("On top")
+                        Spacer()
+                        if pinned.count > 1 { Caption("Hold to move") }
+                    }
                     if pinned.isEmpty {
                         RoundedRectangle(cornerRadius: 18)
                             .stroke(Theme.muted.opacity(0.5), style: StrokeStyle(lineWidth: 1.5, lineCap: .round, dash: [0.1, 6]))
@@ -447,10 +448,38 @@ struct TVsSheet: View {
                     } else {
                         Text(saved.name).font(.title3.weight(.semibold))
                     }
-                    Caption(status)
+                    HStack(spacing: 6) {
+                        Circle().fill(tv.state == .connected ? Theme.accent : Theme.muted).frame(width: 5, height: 5)
+                        Caption(tv.state == .connected ? "Connected" : "Reconnecting")
+                    }
                 }
                 Spacer()
-                Circle().fill(tv.state == .connected ? Theme.accent : Theme.muted).frame(width: 6, height: 6)
+                if let volume = tv.volume, tv.state == .connected {
+                    Text(tv.muted ? "--" : String(format: "%02d", volume))
+                        .font(Theme.dot(26))
+                        .foregroundStyle(tv.muted ? Theme.muted : Theme.accent)
+                }
+            }
+
+            // What it's doing right now: the app on screen, and which input it's on.
+            if tv.state == .connected {
+                HStack(spacing: 8) {
+                    chip {
+                        if let app = tv.foregroundApp {
+                            AppIcon(app: app, radius: 6, inset: 2).frame(width: 22, height: 22)
+                            Text(app.title).font(.subheadline).lineLimit(1)
+                        } else {
+                            Image(systemName: "house").font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.accent)
+                            Text(tv.foregroundInput?.label ?? "Home").font(.subheadline).lineLimit(1)
+                        }
+                    }
+                    if let input = tv.foregroundInput ?? tv.inputs.first(where: { $0.signal }) {
+                        chip {
+                            Text(input.port.map(String.init) ?? "").font(Theme.dot(16)).foregroundStyle(Theme.accent)
+                            Text(input.label).font(.subheadline).lineLimit(1)
+                        }
+                    }
+                }
             }
 
             HStack(spacing: 20) {
@@ -463,15 +492,27 @@ struct TVsSheet: View {
                         editing = true
                         focused = true
                     }
+                    action("TV settings", Theme.ink) {
+                        tv.press(.settings)
+                        dismiss()
+                    }
                     action("Forget", Theme.muted) { confirmForget = true }
                 }
             }
-            .padding(.leading, 54)
+            .padding(.leading, 2)
         }
-        .padding(14)
-        .background(Theme.key, in: RoundedRectangle(cornerRadius: 18))
-        .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.accent.opacity(0.5), lineWidth: 1))
+        .padding(16)
+        .background(Theme.key, in: RoundedRectangle(cornerRadius: 22))
+        .overlay(RoundedRectangle(cornerRadius: 22).stroke(Theme.accent.opacity(0.55), lineWidth: 1))
         .animation(.easeOut(duration: 0.15), value: editing)
+    }
+
+    private func chip<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+        HStack(spacing: 10) { content() }
+            .padding(.horizontal, 12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(height: 44)
+            .background(Theme.background, in: RoundedRectangle(cornerRadius: 12))
     }
 
     private func other(_ saved: TVConnection.SavedTV) -> some View {
@@ -487,6 +528,9 @@ struct TVsSheet: View {
                 }
                 Spacer()
                 Caption("Switch")
+                    .padding(.horizontal, 14)
+                    .frame(height: 34)
+                    .background(Theme.background, in: Capsule())
             }
             .padding(14)
         }
@@ -615,6 +659,7 @@ struct ScreenshotSheet: View {
 struct SonosSheet: View {
     @EnvironmentObject private var sonos: Sonos
     @Environment(\.dismiss) private var dismiss
+    @State private var sleepPick: Int?
 
     var body: some View {
         ScrollView {
@@ -664,55 +709,67 @@ struct SonosSheet: View {
 
     // MARK: What's playing
 
-    @ViewBuilder
     private var nowPlaying: some View {
-        HStack(spacing: 14) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 10).fill(Theme.background)
-                if let art = sonos.track?.art {
-                    AsyncImage(url: art) { image in image.resizable().scaledToFill() } placeholder: { Color.clear }
-                } else {
-                    Image(systemName: sonos.onTV ? "tv" : "music.note")
-                        .font(.system(size: 18, weight: .medium))
-                        .foregroundStyle(Theme.accent)
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 14) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 12).fill(Theme.background)
+                    if let art = sonos.track?.art {
+                        AsyncImage(url: art) { image in image.resizable().scaledToFill() } placeholder: { Color.clear }
+                    } else {
+                        Image(systemName: sonos.onTV ? "tv" : "music.note")
+                            .font(.system(size: 20, weight: .medium))
+                            .foregroundStyle(Theme.accent)
+                    }
                 }
-            }
-            .frame(width: 56, height: 56)
-            .clipShape(RoundedRectangle(cornerRadius: 10))
+                .frame(width: 64, height: 64)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text(sonos.onTV ? "TV sound" : sonos.track?.title ?? "Nothing playing")
-                    .font(.body.weight(.semibold)).lineLimit(1)
-                Caption(sonos.onTV ? "From the TV" : sonos.track?.artist ?? "Music")
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(sonos.onTV ? "TV sound" : sonos.track?.title ?? "Nothing playing")
+                        .font(.body.weight(.semibold)).lineLimit(1)
+                    Text(sonos.onTV ? "From the TV" : sonos.track?.artist ?? "Music")
+                        .font(.subheadline).foregroundStyle(Theme.ink.opacity(0.65)).lineLimit(1)
+                }
+                Spacer(minLength: 0)
             }
-            Spacer(minLength: 0)
 
             if !sonos.onTV {
-                HStack(spacing: 4) {
-                    small("backward.fill", sonos.previous)
-                    small(sonos.playing ? "pause.fill" : "play.fill", sonos.playPause)
-                    small("forward.fill", sonos.next)
+                HStack(spacing: 8) {
+                    small("backward.end.fill", sonos.previous)
+                    Button {
+                        haptic()
+                        sonos.playPause()
+                    } label: {
+                        Image(systemName: sonos.playing ? "pause.fill" : "play.fill")
+                            .font(.system(size: 16, weight: .bold))
+                            .contentTransition(.symbolEffect(.replace))
+                            .foregroundStyle(Theme.background)
+                            .frame(width: 52, height: 52)
+                            .background(Theme.ink, in: Circle())
+                    }
+                    .buttonStyle(Pressable())
+                    small("forward.end.fill", sonos.next)
+                    Spacer(minLength: 8)
+                    Button {
+                        haptic(.medium)
+                        sonos.backToTV()
+                    } label: {
+                        Label("Back to TV", systemImage: "tv")
+                            .font(.subheadline.weight(.semibold))
+                            .padding(.horizontal, 16)
+                            .frame(height: 44)
+                            .foregroundStyle(Theme.background)
+                            .background(Theme.accent, in: Capsule())
+                    }
+                    .buttonStyle(Pressable())
                 }
             }
         }
         .padding(14)
-        .background(Theme.key, in: RoundedRectangle(cornerRadius: 16))
-        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.hairline))
-
-        if !sonos.onTV {
-            Button {
-                haptic(.medium)
-                sonos.backToTV()
-            } label: {
-                Label("Back to TV sound", systemImage: "tv")
-                    .font(.subheadline.weight(.semibold))
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 48)
-                    .foregroundStyle(Theme.background)
-                    .background(Theme.accent, in: RoundedRectangle(cornerRadius: 14))
-            }
-            .buttonStyle(Pressable())
-        }
+        .background(Theme.key, in: RoundedRectangle(cornerRadius: 22))
+        .overlay(RoundedRectangle(cornerRadius: 22).stroke(Theme.hairline))
+        .animation(.easeOut(duration: 0.2), value: sonos.onTV)
     }
 
     private func small(_ symbol: String, _ action: @escaping () -> Void) -> some View {
@@ -722,10 +779,10 @@ struct SonosSheet: View {
         } label: {
             Image(systemName: symbol)
                 .font(.system(size: 14, weight: .semibold))
-                .contentTransition(.symbolEffect(.replace))
-                .frame(width: 38, height: 38)
+                .frame(width: 44, height: 44)
+                .background(Theme.background, in: Circle())
         }
-        .buttonStyle(KeyStyle(shape: Circle()))
+        .buttonStyle(Pressable())
     }
 
     // MARK: Settings
@@ -744,20 +801,18 @@ struct SonosSheet: View {
     }
 
     private func level(_ title: String, value: Binding<Int>, range: ClosedRange<Int>, signed: Bool, commit: @escaping () -> Void) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .firstTextBaseline) {
                 Caption(title)
                 Spacer()
                 Text(signed && value.wrappedValue > 0 ? "+\(value.wrappedValue)" : "\(value.wrappedValue)")
-                    .font(Theme.dot(20))
+                    .font(Theme.dot(22))
                     .foregroundStyle(Theme.accent)
                     .monospacedDigit()
+                    .contentTransition(.numericText())
             }
-            Slider(value: Binding(get: { Double(value.wrappedValue) }, set: { value.wrappedValue = Int($0.rounded()) }),
-                   in: Double(range.lowerBound)...Double(range.upperBound), step: 1) { editing in
-                if !editing { commit() }
-            }
-            .tint(Theme.accent)
+            DotTrack(value: value, range: range, signed: signed, commit: commit)
+                .accessibilityLabel(title)
         }
     }
 
@@ -776,9 +831,12 @@ struct SonosSheet: View {
                 }
             }
             HStack(spacing: 8) {
-                chip("Off", active: sonos.sleepLeft == nil) { sonos.sleep(minutes: nil) }
+                chip("Off", active: sonos.sleepLeft == nil) { sonos.sleep(minutes: nil); sleepPick = nil }
                 ForEach([15, 30, 60, 90], id: \.self) { minutes in
-                    chip("\(minutes)", active: false) { sonos.sleep(minutes: minutes) }
+                    chip("\(minutes)", active: sonos.sleepLeft != nil && sleepPick == minutes) {
+                        sonos.sleep(minutes: minutes)
+                        sleepPick = minutes
+                    }
                 }
             }
         }
@@ -798,5 +856,76 @@ struct SonosSheet: View {
                 .overlay(Capsule().stroke(active ? .clear : Theme.hairline))
         }
         .buttonStyle(Pressable())
+    }
+}
+
+
+/// A level drawn as a row of dots with a knob: drag along it, it saves when you let go.
+/// Signed levels (the Sub) light from the center mark outwards.
+struct DotTrack: View {
+    @Binding var value: Int
+    let range: ClosedRange<Int>
+    var signed = false
+    let commit: () -> Void
+
+    private let dots = 17
+    private let knob: CGFloat = 18
+    private let ticks = UISelectionFeedbackGenerator()
+
+    var body: some View {
+        GeometryReader { geo in
+            let span = Double(range.upperBound - range.lowerBound)
+            let at = Double(value - range.lowerBound) / span
+            let zero = signed ? Double(-range.lowerBound) / span : 0
+            let travel = geo.size.width - knob
+
+            ZStack(alignment: .leading) {
+                HStack(spacing: 0) {
+                    ForEach(0..<dots, id: \.self) { i in
+                        let f = Double(i) / Double(dots - 1)
+                        Circle()
+                            .fill(lit(f, at: at, zero: zero) ? Theme.accent : Theme.muted.opacity(0.3))
+                            .frame(width: 5, height: 5)
+                        if i < dots - 1 { Spacer(minLength: 0) }
+                    }
+                }
+                .padding(.horizontal, knob / 2 - 2.5)
+                if signed {
+                    Capsule().fill(Theme.muted)
+                        .frame(width: 2, height: 14)
+                        .offset(x: zero * travel + knob / 2 - 1)
+                }
+                Circle()
+                    .fill(Theme.ink)
+                    .frame(width: knob, height: knob)
+                    .shadow(color: .black.opacity(0.35), radius: 3, y: 1)
+                    .offset(x: at * travel)
+            }
+            .frame(height: 28)
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { drag in
+                        let f = min(max((drag.location.x - knob / 2) / travel, 0), 1)
+                        let next = range.lowerBound + Int((f * span).rounded())
+                        if next != value {
+                            value = next
+                            ticks.selectionChanged()
+                        }
+                    }
+                    .onEnded { _ in commit() }
+            )
+        }
+        .frame(height: 28)
+        .accessibilityElement()
+        .accessibilityValue("\(value)")
+        .accessibilityAdjustableAction { direction in
+            value = min(max(value + (direction == .increment ? 1 : -1), range.lowerBound), range.upperBound)
+            commit()
+        }
+    }
+
+    private func lit(_ f: Double, at: Double, zero: Double) -> Bool {
+        signed ? (f >= min(at, zero) - 0.001 && f <= max(at, zero) + 0.001 && abs(at - zero) > 0.001) : f <= at + 0.001
     }
 }

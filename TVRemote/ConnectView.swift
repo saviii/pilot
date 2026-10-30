@@ -14,7 +14,6 @@ struct ConnectView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
             HStack {
-                Caption("Pilot")
                 Spacer()
                 if tv.adding {
                     Button("Cancel") { tv.stopAdding() }
@@ -26,8 +25,24 @@ struct ConnectView: View {
 
             Spacer(minLength: 0)
 
+            // The icon, then the name in Doto.
+            Image("PilotMark")
+                .resizable()
+                .frame(width: 112, height: 112)
+                .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 26, style: .continuous).stroke(Theme.hairline))
+                .shadow(color: .black.opacity(0.35), radius: 16, y: 8)
+                .accessibilityHidden(true)
+
+            Text("PILOT")
+                .font(Theme.dot(22))
+                .tracking(1)
+                .foregroundStyle(Theme.accent)
+                .padding(.bottom, -12)
+
             Text(headline)
-                .font(.system(size: 34, weight: .semibold))
+                .font(.system(size: 38, weight: .bold))
+                .tracking(-0.8)
                 .fixedSize(horizontal: false, vertical: true)
 
             Text(detail)

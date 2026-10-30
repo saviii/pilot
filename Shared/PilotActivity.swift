@@ -7,6 +7,7 @@ struct PilotActivityAttributes: ActivityAttributes {
     struct ContentState: Codable, Hashable {
         var tv: String
         var app: String?
+        var appColor: String? = nil
         var volume: Int?
         var muted: Bool
     }

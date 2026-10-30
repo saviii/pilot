@@ -10,7 +10,7 @@ enum LiveRemote {
 
     private static func state(_ tv: TVConnection) -> PilotActivityAttributes.ContentState {
         .init(tv: tv.current?.name ?? "TV", app: tv.foregroundApp?.title ?? tv.foregroundInput?.label,
-              volume: tv.volume, muted: tv.muted)
+              appColor: tv.foregroundApp?.color, volume: tv.volume, muted: tv.muted)
     }
 
     /// You left Pilot while connected: put the panel up.

@@ -43,7 +43,7 @@ struct RemoteView: View {
             Spacer(minLength: 16)
             Playback()
         }
-        .padding(.horizontal, 24)
+        .padding(.horizontal, 20)
         .padding(.top, 8)
         .padding(.bottom, 8)
         .background(Theme.background.ignoresSafeArea())
@@ -77,12 +77,12 @@ struct RemoteView: View {
         .sheet(item: $sheet) { kind in
             Group {
                 switch kind {
-                case .keyboard: KeyboardSheet().presentationDetents([.height(tv.foregroundInput == nil ? 220 : 330)])
+                case .keyboard: KeyboardSheet().presentationDetents([.height(320)])
                 case .inputs: InputsSheet().presentationDetents([.medium, .large])
                 case .apps: AppsSheet().presentationDetents([.large])
                 case .sonos: SonosSheet().environmentObject(sonos).presentationDetents([.large])
                 case .screenshot: ScreenshotSheet().presentationDetents([.height(400)])
-                case .tvs: TVsSheet().presentationDetents([.height(CGFloat(170 + tv.saved.count * 100))])
+                case .tvs: TVsSheet().presentationDetents([.height(CGFloat(250 + tv.saved.count * 100))])
                 }
             }
             .presentationBackground(Theme.background)
@@ -106,41 +106,65 @@ private struct TopBar: View {
 
     var body: some View {
         HStack(spacing: 8) {
+            // What's on: the TV's app in its own color, the TV's name under it. Opens Your TVs.
             Button {
                 haptic()
                 sheet = .tvs
             } label: {
-                HStack(spacing: 8) {
-                    if tv.state == .connected, let app = tv.foregroundApp {
-                        // What's on the TV, in its own colors.
-                        AppIcon(app: app, radius: 5, inset: 1).frame(width: 22, height: 22)
-                    } else {
-                        // Orange when connected; faint while it reconnects.
-                        Circle()
-                            .fill(tv.state == .connected ? Theme.accent : Theme.muted)
-                            .frame(width: 6, height: 6)
+                HStack(spacing: 12) {
+                    ZStack {
+                        if tv.state == .connected, let app = tv.foregroundApp {
+                            AppIcon(app: app, radius: 20, inset: 5)
+                        } else if tv.state == .connected, let input = tv.foregroundInput {
+                            Circle().fill(Theme.background)
+                            Text(input.port.map(String.init) ?? "").font(Theme.dot(18)).foregroundStyle(Theme.accent)
+                        } else {
+                            Circle().fill(Theme.background)
+                            Image(systemName: "tv").font(.system(size: 15, weight: .semibold)).foregroundStyle(Theme.muted)
+                        }
                     }
-                    Caption(tv.current?.name ?? "LG · \(tv.host ?? "")")
-                        .lineLimit(1)
-                        .truncationMode(.tail)
+                    .frame(width: 40, height: 40)
+                    .clipShape(Circle())
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(title)
+                            .font(.system(size: 15, weight: .semibold))
+                            .lineLimit(1)
+                        HStack(spacing: 6) {
+                            Circle()
+                                .fill(tv.state == .connected ? Theme.accent : Theme.muted)
+                                .frame(width: 5, height: 5)
+                            Caption(tv.current?.name ?? "LG TV").lineLimit(1)
+                        }
+                    }
+                    Spacer(minLength: 4)
                     Image(systemName: "chevron.down")
-                        .font(.system(size: 9, weight: .bold))
+                        .font(.system(size: 10, weight: .bold))
                         .foregroundStyle(Theme.muted)
                 }
-                .frame(height: 44)
+                .padding(.leading, 6)
+                .padding(.trailing, 12)
+                .frame(height: 52)
+                .background(Theme.key, in: Capsule())
+                .overlay(Capsule().stroke(Theme.hairline, lineWidth: 1))
+                .shadow(color: Theme.shadow, radius: 2, y: 1)
                 .animation(.easeOut(duration: 0.2), value: tv.foreground)
                 .animation(.easeOut(duration: 0.2), value: tv.state == .connected)
-                .contentShape(Rectangle())
+                .contentShape(Capsule())
             }
             .buttonStyle(Pressable())
+            .foregroundStyle(Theme.ink)
             .layoutPriority(1)
-            Spacer(minLength: 4)
+
             AppearanceKey(appearance: $appearance)
             IconKey(symbol: "cable.connector", size: 44) { sheet = .inputs }
-            IconKey(symbol: "gearshape.fill", size: 44) { tv.press(.settings) }
             PowerKey()
         }
+    }
 
+    private var title: String {
+        guard tv.state == .connected else { return "Connecting" }
+        return tv.foregroundApp?.title ?? tv.foregroundInput?.label ?? "Home"
     }
 }
 
@@ -205,8 +229,8 @@ private struct AppKeys: View {
                     .padding(.bottom, 10)
                 }
                 // Scroll edge to edge, but line the tiles up with the page margin.
-                .contentMargins(.horizontal, 24, for: .scrollContent)
-                .padding(.horizontal, -24)
+                .contentMargins(.horizontal, 20, for: .scrollContent)
+                .padding(.horizontal, -20)
                 .onChange(of: pins.ids) { old, new in
                     guard new.count > old.count else { return }
                     withAnimation(.easeInOut(duration: 0.3)) { reader.scrollTo("add", anchor: .trailing) }
@@ -323,9 +347,17 @@ private struct ClickWheel: View {
                     .overlay(Circle().stroke(Theme.hairline, lineWidth: 1))
                     .frame(width: inner * 2, height: inner * 2)
                     .scaleEffect(active == .ok ? 0.97 : 1)
-                Text("OK")
-                    .font(Theme.mono(15))
-                    .foregroundStyle(active == .ok ? Theme.background : Theme.ink)
+                VStack(spacing: 6) {
+                    Text("OK").font(Theme.mono(15))
+                    if pointer.active {
+                        // While pointing, OK clicks where the pointer is.
+                        Text("CLICK").font(Theme.mono(8)).tracking(1.4)
+                            .foregroundStyle(active == .ok ? Theme.background : Theme.accent)
+                            .transition(.opacity)
+                    }
+                }
+                .foregroundStyle(active == .ok ? Theme.background : Theme.ink)
+                .animation(.easeOut(duration: 0.15), value: pointer.active)
             }
             .frame(width: side, height: side)
             .contentShape(Circle())
@@ -457,6 +489,7 @@ private struct PointerKey: View {
             .foregroundStyle(pointer.active ? Theme.background : Theme.ink)
             .frame(width: 56, height: 56)
             .background(pointer.active ? Theme.accent : Theme.key, in: Circle())
+            .background(Circle().fill(Theme.accent.opacity(pointer.active ? 0.18 : 0)).padding(-5))
             .overlay(Circle().stroke(Theme.hairline, lineWidth: 1))
             .shadow(color: pointer.active ? .clear : Theme.shadow, radius: 2, y: 1)
             .scaleEffect(pointer.active ? 0.97 : 1)
@@ -514,7 +547,7 @@ private struct VolumeBar: View {
         Key(repeats: true, shape: shape, action: action) {
             Image(systemName: symbol)
                 .font(.system(size: 18, weight: .bold))
-                .frame(width: sonos.host == nil ? 76 : 60, height: 64)
+                .frame(width: sonos.host == nil ? 76 : 62, height: 64)
         }
     }
 }
@@ -530,20 +563,23 @@ private struct VolumeLevel: View {
         let level = tv.volume ?? 0
         VStack(spacing: 7) {
             HStack(spacing: 8) {
-                Image(systemName: tv.muted ? "speaker.slash.fill" : "speaker.wave.2.fill")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(tv.muted ? Theme.accent : Theme.muted)
+                if tv.muted {
+                    Image(systemName: "speaker.slash.fill")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(Theme.accent)
+                        .transition(.opacity)
+                }
                 Text(tv.volume.map { String(format: "%02d", $0) } ?? "--")
-                    .font(Theme.dot(28))
+                    .font(Theme.dot(30))
                     .foregroundStyle(tv.muted ? Theme.muted : Theme.accent)
                     .monospacedDigit()
                     .contentTransition(.numericText())
             }
             // The level as a row of dots, out of 100.
             HStack(spacing: 4) {
-                ForEach(0..<16, id: \.self) { i in
+                ForEach(0..<14, id: \.self) { i in
                     Circle()
-                        .fill(!tv.muted && Double(i) < (Double(level) / 100 * 16).rounded(.up) ? Theme.accent : Theme.muted.opacity(0.3))
+                        .fill(!tv.muted && Double(i) < (Double(level) / 100 * 14).rounded(.up) ? Theme.accent : Theme.muted.opacity(0.3))
                         .frame(width: 4, height: 4)
                 }
             }
@@ -603,7 +639,15 @@ private struct Playback: View {
                     tv.press(playing ? .pause : .play)
                     tv.playState = playing ? "paused" : "playing"   // the TV's report confirms it
                 }) {
-                    glyph(playing ? "pause.fill" : "play.fill")
+                    // When the app reports its state, the key says it.
+                    HStack(spacing: 10) {
+                        Image(systemName: playing ? "pause.fill" : "play.fill")
+                            .font(.system(size: 20, weight: .semibold))
+                            .contentTransition(.symbolEffect(.replace))
+                        Caption(playing ? "Playing" : "Paused")
+                    }
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 56)
                 }
             } else {
                 HStack(spacing: 4) {
