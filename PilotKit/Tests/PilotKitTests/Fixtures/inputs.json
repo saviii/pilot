@@ -1,0 +1,5 @@
+{"returnValue":true,"devices":[
+ {"id":"HDMI_1","label":"HDMI 1","port":1,"appId":"com.webos.app.hdmi1","connected":false,"hdmiSignalExist":false},
+ {"id":"HDMI_2","label":"PlayStation 5","port":2,"appId":"com.webos.app.hdmi2","connected":true,"hdmiSignalExist":true},
+ {"id":"HDMI_3","port":3,"connected":false}
+]}
