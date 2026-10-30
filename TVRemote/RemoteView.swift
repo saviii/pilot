@@ -6,6 +6,8 @@ import SwiftUI
 struct RemoteView: View {
     @EnvironmentObject private var tv: TVConnection
     @StateObject private var pointer = AirPointer()
+    @StateObject private var buttons = VolumeButtons()
+    @Environment(\.scenePhase) private var scenePhase
     @State private var sheet: Sheet?
 
     var body: some View {
@@ -45,6 +47,13 @@ struct RemoteView: View {
         .padding(.bottom, 8)
         .background(Theme.background.ignoresSafeArea())
         .environmentObject(pointer)
+        // The phone's side buttons turn the TV up and down while Pilot is open.
+        .background(HiddenVolumeView(buttons: buttons).frame(width: 1, height: 1).offset(x: -200))
+        .onAppear { buttons.start(tv) }
+        .onDisappear { buttons.stop() }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { buttons.start(tv) } else { buttons.stop() }
+        }
         // The phone's keyboard covers the remote rather than squashing it.
         .ignoresSafeArea(.keyboard)
         #if DEBUG

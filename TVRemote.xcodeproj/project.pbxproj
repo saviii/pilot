@@ -15,6 +15,7 @@
 		57D747DA0BA1A1EE0F1F6239 /* TVFinder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8891D0439FD45DB92057E43D /* TVFinder.swift */; };
 		7C0B16A58732E45AA992486C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 7710BFB4F02645288E5B22EE /* Assets.xcassets */; };
 		A4CFB0114C3877128C44158F /* ConnectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C85F3C973FC57383F2229AF8 /* ConnectView.swift */; };
+		A89A8EEFA3A6BDE1EDB9B93B /* VolumeButtons.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E6996BE3ECFE60032881D83 /* VolumeButtons.swift */; };
 		B184FDE3200BEC03F95B7BBE /* RemoteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F35B480751C62CB57DAA050 /* RemoteView.swift */; };
 		EB89AFC0F5EEF12F5646E4BA /* MartianMono.ttf in Resources */ = {isa = PBXBuildFile; fileRef = E2292D60B17F487AF0932F82 /* MartianMono.ttf */; };
 		F503EA355FA14715C6C82F7A /* Sheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8F8E21A290A84DE2791A6AF /* Sheets.swift */; };
@@ -24,6 +25,7 @@
 		002A7702B7172415B2F0A3A5 /* AirPointer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AirPointer.swift; sourceTree = "<group>"; };
 		3E8FAD32B58451258682B3FA /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		4A925A32C00EA5E0EA005803 /* TVRemote.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = TVRemote.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		4E6996BE3ECFE60032881D83 /* VolumeButtons.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VolumeButtons.swift; sourceTree = "<group>"; };
 		5F35B480751C62CB57DAA050 /* RemoteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteView.swift; sourceTree = "<group>"; };
 		7710BFB4F02645288E5B22EE /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		8891D0439FD45DB92057E43D /* TVFinder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TVFinder.swift; sourceTree = "<group>"; };
@@ -50,6 +52,7 @@
 				B3E0F19D6E88F4A6B7E0FB33 /* TVConnection.swift */,
 				8891D0439FD45DB92057E43D /* TVFinder.swift */,
 				94A46E339FC62F654E112631 /* TVRemoteApp.swift */,
+				4E6996BE3ECFE60032881D83 /* VolumeButtons.swift */,
 				B710D2F616477B717F837483 /* Fonts */,
 			);
 			path = TVRemote;
@@ -161,6 +164,7 @@
 				57D747DA0BA1A1EE0F1F6239 /* TVFinder.swift in Sources */,
 				4F6F27EB18FD9B0FF713D7AB /* TVRemoteApp.swift in Sources */,
 				568BBF769055F8A3F03818E4 /* Theme.swift in Sources */,
+				A89A8EEFA3A6BDE1EDB9B93B /* VolumeButtons.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
