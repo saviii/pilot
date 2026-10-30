@@ -5,7 +5,7 @@ import SwiftUI
 /// No channel or number keys: everything here is apps, so up and down is the wheel's job.
 struct RemoteView: View {
     @EnvironmentObject private var tv: TVConnection
-    @State private var pointer = false
+    @StateObject private var pointer = AirPointer()
     @State private var sheet: Sheet?
 
     var body: some View {
@@ -15,10 +15,8 @@ struct RemoteView: View {
             AppKeys(sheet: $sheet)
             Spacer(minLength: 16)
 
-            Group {
-                if pointer { Trackpad() } else { ClickWheel() }
-            }
-            .frame(maxWidth: 310, maxHeight: 310)
+            ClickWheel()
+                .frame(maxWidth: 310, maxHeight: 310)
             .aspectRatio(1, contentMode: .fit)
 
             Spacer(minLength: 16)
@@ -32,7 +30,7 @@ struct RemoteView: View {
                 Spacer()
                 IconKey(symbol: "keyboard") { sheet = .keyboard }
                 Spacer()
-                IconKey(symbol: "cursorarrow", tint: pointer ? Theme.accent : Theme.ink) { pointer.toggle() }
+                PointerKey()
             }
 
             Spacer(minLength: 16)
@@ -44,6 +42,7 @@ struct RemoteView: View {
         .padding(.top, 8)
         .padding(.bottom, 8)
         .background(Theme.background.ignoresSafeArea())
+        .environmentObject(pointer)
         // The phone's keyboard covers the remote rather than squashing it.
         .ignoresSafeArea(.keyboard)
         #if DEBUG
@@ -267,6 +266,7 @@ extension Color {
 /// like the wheel on LG's remote.
 private struct ClickWheel: View {
     @EnvironmentObject private var tv: TVConnection
+    @EnvironmentObject private var pointer: AirPointer
     @State private var active: Zone?
     @State private var repeating: Task<Void, Never>?
 
@@ -324,7 +324,8 @@ private struct ClickWheel: View {
                         repeating?.cancel()
                         if active == .ok {
                             haptic(.medium)
-                            tv.press(.enter)
+                            // While you're pointing (or just were), OK clicks where the pointer is.
+                            if pointer.recentlyUsed { tv.click() } else { tv.press(.enter) }
                         }
                         active = nil
                     }
@@ -424,54 +425,39 @@ private struct Wedge: Shape {
     }
 }
 
-// MARK: - Trackpad (the Magic Remote's pointer)
+// MARK: - Pointer
 
-/// Drag to move the TV's pointer, tap to click, drag along the right edge to scroll.
-private struct Trackpad: View {
+/// Hold to point: the TV's pointer follows the phone while the key is down.
+private struct PointerKey: View {
     @EnvironmentObject private var tv: TVConnection
-    @State private var last: CGPoint?
-    @State private var touching = false
+    @EnvironmentObject private var pointer: AirPointer
 
     var body: some View {
-        GeometryReader { geo in
-            RoundedRectangle(cornerRadius: 36)
-                .fill(touching ? Theme.keyPressed : Theme.key)
-                .overlay(RoundedRectangle(cornerRadius: 36).stroke(Theme.hairline, lineWidth: 1))
-                .overlay(alignment: .trailing) {
-                    // Scroll strip: a column of dots, the site's motif.
-                    VStack(spacing: 10) {
-                        ForEach(0..<9, id: \.self) { _ in
-                            Circle().fill(Theme.muted.opacity(0.6)).frame(width: 3, height: 3)
-                        }
+        Image(systemName: "cursorarrow.rays")
+            .font(.system(size: 18, weight: .semibold))
+            .foregroundStyle(pointer.active ? Theme.background : Theme.ink)
+            .frame(width: 56, height: 56)
+            .background(pointer.active ? Theme.accent : Theme.key, in: Circle())
+            .overlay(Circle().stroke(Theme.hairline, lineWidth: 1))
+            .shadow(color: pointer.active ? .clear : Theme.shadow, radius: 2, y: 1)
+            .scaleEffect(pointer.active ? 0.97 : 1)
+            .animation(.easeOut(duration: 0.15), value: pointer.active)
+            .contentShape(Circle())
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { _ in
+                        guard !pointer.active else { return }
+                        haptic(.medium)
+                        pointer.start(tv)
                     }
-                    .padding(.trailing, 18)
-                }
-                .contentShape(Rectangle())
-                .animation(.easeOut(duration: 0.15), value: touching)
-                .gesture(
-                    DragGesture(minimumDistance: 0)
-                        .onChanged { value in
-                            touching = true
-                            defer { last = value.location }
-                            guard let last else { return }
-                            let dx = value.location.x - last.x
-                            let dy = value.location.y - last.y
-                            if value.startLocation.x > geo.size.width - 48 {
-                                tv.scroll(dy: -dy)
-                            } else {
-                                tv.move(dx: dx * 1.6, dy: dy * 1.6)
-                            }
-                        }
-                        .onEnded { value in
-                            touching = false
-                            last = nil
-                            if hypot(value.translation.width, value.translation.height) < 6 {
-                                haptic()
-                                tv.click()
-                            }
-                        }
-                )
-        }
+                    .onEnded { _ in
+                        haptic(.light)
+                        pointer.stop()
+                    }
+            )
+            .onDisappear { pointer.stop() }
+            .accessibilityLabel("Point")
+            .accessibilityHint("Hold and move the phone to move the TV's pointer")
     }
 }
 

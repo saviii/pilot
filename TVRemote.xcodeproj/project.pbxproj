@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		1102AFF235807E440C1A483E /* AirPointer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002A7702B7172415B2F0A3A5 /* AirPointer.swift */; };
 		4B29C4F71A286AC63D4CE682 /* Doto.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 8F77CF002A63F8DDBE20F8AE /* Doto.ttf */; };
 		4E74EF105D27D5CBFE43E3B5 /* TVConnection.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3E0F19D6E88F4A6B7E0FB33 /* TVConnection.swift */; };
 		4F6F27EB18FD9B0FF713D7AB /* TVRemoteApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94A46E339FC62F654E112631 /* TVRemoteApp.swift */; };
@@ -20,6 +21,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		002A7702B7172415B2F0A3A5 /* AirPointer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AirPointer.swift; sourceTree = "<group>"; };
 		3E8FAD32B58451258682B3FA /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		4A925A32C00EA5E0EA005803 /* TVRemote.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = TVRemote.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		5F35B480751C62CB57DAA050 /* RemoteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteView.swift; sourceTree = "<group>"; };
@@ -38,6 +40,7 @@
 		094975E68A6DDA2334570010 /* TVRemote */ = {
 			isa = PBXGroup;
 			children = (
+				002A7702B7172415B2F0A3A5 /* AirPointer.swift */,
 				7710BFB4F02645288E5B22EE /* Assets.xcassets */,
 				C85F3C973FC57383F2229AF8 /* ConnectView.swift */,
 				C312E9C7FC9B612C7292F1D0 /* Info.plist */,
@@ -150,6 +153,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1102AFF235807E440C1A483E /* AirPointer.swift in Sources */,
 				A4CFB0114C3877128C44158F /* ConnectView.swift in Sources */,
 				B184FDE3200BEC03F95B7BBE /* RemoteView.swift in Sources */,
 				F503EA355FA14715C6C82F7A /* Sheets.swift in Sources */,
