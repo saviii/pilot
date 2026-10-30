@@ -1,4 +1,5 @@
 import Foundation
+import Network
 import UIKit
 
 /// Talks to an LG webOS TV over the local network, using the same
@@ -325,6 +326,7 @@ final class TVConnection: ObservableObject {
     /// Paired TVs get a few quiet retries (1s, 2s, 4s, 8s) before we stop and wait
     /// for the app to come back to the front.
     private func retryIfPaired() {
+        unreachable = true
         guard isPaired, retries < 4 else { return }
         let delay = 1 << retries
         retries += 1
@@ -351,6 +353,7 @@ final class TVConnection: ObservableObject {
                 }
                 state = .connected
                 retries = 0
+                unreachable = false
                 if let host, !saved.contains(where: { $0.host == host }) {
                     save(saved + [SavedTV(host: host, name: saved.isEmpty ? "Living room" : "TV \(saved.count + 1)")])
                 }
@@ -380,6 +383,7 @@ final class TVConnection: ObservableObject {
     private func didConnect() async {
         await openPointer()
         await loadInputs()
+        await learnAddress()
         subscribe("ssap://com.webos.applicationManager/getForegroundAppInfo") { [weak self] payload in
             self?.foreground = payload["appId"] as? String
             if let self { LiveRemote.update(self) }
@@ -505,6 +509,49 @@ final class TVConnection: ObservableObject {
     func volumeUp() { run("ssap://audio/volumeUp") }
     func volumeDown() { run("ssap://audio/volumeDown") }
     func toggleMute() { run("ssap://audio/setMute", ["mute": !muted]) }
+    // MARK: Turning on
+
+    /// Waking up: the magic packet's gone out and we're waiting for the TV to answer.
+    @Published private(set) var waking = false
+    /// A try has failed since the TV last answered: it's off, or not on this Wi-Fi.
+    @Published private(set) var unreachable = false
+
+    /// The TV can be woken: we've learned its network (MAC) address.
+    var canWake: Bool { host.flatMap { UserDefaults.standard.string(forKey: "mac.\($0)") } != nil }
+
+    /// Learns the TV's network address while it's on, so it can be woken later.
+    private func learnAddress() async {
+        guard let host, let info = try? await request("ssap://com.webos.service.connectionmanager/getinfo") else { return }
+        let wifi = (info["wifiInfo"] as? [String: Any])?["macAddress"] as? String
+        let wired = (info["wiredInfo"] as? [String: Any])?["macAddress"] as? String
+        if let mac = wifi ?? wired, mac.split(separator: ":").count == 6 {
+            UserDefaults.standard.set(mac, forKey: "mac.\(host)")
+        }
+    }
+
+    /// Wake-on-LAN. iOS won't let us broadcast, so the packet goes straight to the
+    /// TV's address; then we keep trying to reconnect for a while.
+    func wake() {
+        guard let host, let mac = UserDefaults.standard.string(forKey: "mac.\(host)") else { return }
+        let bytes = mac.split(separator: ":").compactMap { UInt8($0, radix: 16) }
+        guard bytes.count == 6 else { return }
+        let packet = Data(repeating: 0xFF, count: 6) + Data((0..<16).flatMap { _ in bytes })
+        for port in [9, 7] as [UInt16] {
+            let link = NWConnection(host: NWEndpoint.Host(host), port: NWEndpoint.Port(rawValue: port)!, using: .udp)
+            link.start(queue: .main)
+            link.send(content: packet, completion: .contentProcessed { _ in link.cancel() })
+        }
+        waking = true
+        Task {
+            for _ in 0..<8 {
+                try? await Task.sleep(for: .seconds(3))
+                if state == .connected { break }
+                if state != .connecting { connect(to: host) }
+            }
+            waking = false
+        }
+    }
+
     func powerOff() {
         run("ssap://system/turnOff")
         LiveRemote.end()

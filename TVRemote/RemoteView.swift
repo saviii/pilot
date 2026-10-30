@@ -150,8 +150,11 @@ private struct TopRow: View {
     }
 
     private var title: String {
-        guard tv.state == .connected else { return "Connecting" }
-        return tv.foregroundApp?.title ?? tv.foregroundInput?.label ?? "Home"
+        if tv.state == .connected { return tv.foregroundApp?.title ?? tv.foregroundInput?.label ?? "Home" }
+        if tv.waking { return "Turning on" }
+        // Still trying vs. given up: after a few quiet retries, the TV is off (or away).
+        if tv.unreachable { return "TV is off" }
+        return "Connecting"
     }
 }
 
@@ -646,6 +649,22 @@ private struct PowerKey: View {
     private let hold: Double = 0.8
 
     var body: some View {
+        if tv.state != .connected && tv.canWake {
+            // Off: one tap turns it on (nothing to guard against).
+            Key(shape: Circle(), action: { tv.wake() }) {
+                Image(systemName: "power")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(tv.waking ? Theme.muted : Theme.accent)
+                    .frame(width: 48, height: 48)
+                    .symbolEffect(.pulse, isActive: tv.waking)
+            }
+            .accessibilityLabel("Turn TV on")
+        } else {
+            offKey
+        }
+    }
+
+    private var offKey: some View {
         Image(systemName: "power")
             .font(.system(size: 14, weight: .semibold))
             .foregroundStyle(Theme.accent)
