@@ -23,6 +23,12 @@ final class Sonos: ObservableObject {
     @Published private(set) var speech = false
     @Published private(set) var night = false
     @Published var sub = 0
+    /// Newer bars (Arc Ultra) call Speech Enhancement "SpeechEnhanceEnabled" and
+    /// ignore the old "DialogLevel"; older ones only know "DialogLevel".
+    private var speechType = "SpeechEnhanceEnabled"
+    /// Just after you change something, don't let a refresh read the old value back.
+    private var quietUntil = Date.distantPast
+
     /// Seconds left on the Sonos's own sleep timer, if one is set.
     @Published private(set) var sleepLeft: Int?
 
@@ -75,7 +81,14 @@ final class Sonos: ObservableObject {
         }
         if let xml = try? await call(.rendering, "GetVolume", [("Channel", "Master")]),
            let level = Self.value("CurrentVolume", in: xml).flatMap(Int.init) { volume = level }
-        speech = await eq("DialogLevel") == 1
+        guard Date() > quietUntil else { return }
+        if let value = await eq("SpeechEnhanceEnabled") {
+            speechType = "SpeechEnhanceEnabled"
+            speech = value == 1
+        } else if let value = await eq("DialogLevel") {
+            speechType = "DialogLevel"
+            speech = value == 1
+        }
         night = await eq("NightMode") == 1
         if let level = await eq("SubGain") { sub = level }
         if let xml = try? await call(.transport, "GetRemainingSleepTimerDuration") {
@@ -90,11 +103,12 @@ final class Sonos: ObservableObject {
 
     // MARK: Changing (only when you tap)
 
-    func setSpeech(_ on: Bool) { speech = on; set("DialogLevel", on ? 1 : 0) }
+    func setSpeech(_ on: Bool) { speech = on; set(speechType, on ? 1 : 0) }
     func setNight(_ on: Bool) { night = on; set("NightMode", on ? 1 : 0) }
     func commitSub() { set("SubGain", sub) }
 
     func commitVolume() {
+        quietUntil = Date().addingTimeInterval(3)
         Task { _ = try? await call(.rendering, "SetVolume", [("Channel", "Master"), ("DesiredVolume", "\(volume)")]) }
     }
 
@@ -125,6 +139,7 @@ final class Sonos: ObservableObject {
     }
 
     private func set(_ type: String, _ value: Int) {
+        quietUntil = Date().addingTimeInterval(3)
         Task { _ = try? await call(.rendering, "SetEQ", [("EQType", type), ("DesiredValue", "\(value)")]) }
     }
 
