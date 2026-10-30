@@ -105,7 +105,7 @@ private struct TopBar: View {
     @AppStorage("appearance") private var appearance: Appearance = .system
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 6) {
             // What's on: the TV's app in its own color, the TV's name under it. Opens Your TVs.
             Button {
                 haptic()
@@ -123,7 +123,7 @@ private struct TopBar: View {
                             Image(systemName: "tv").font(.system(size: 15, weight: .semibold)).foregroundStyle(Theme.muted)
                         }
                     }
-                    .frame(width: 40, height: 40)
+                    .frame(width: 38, height: 38)
                     .clipShape(Circle())
 
                     VStack(alignment: .leading, spacing: 3) {
@@ -137,14 +137,11 @@ private struct TopBar: View {
                             Caption(tv.current?.name ?? "LG TV").lineLimit(1)
                         }
                     }
-                    Spacer(minLength: 4)
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(Theme.muted)
+                    Spacer(minLength: 0)
                 }
-                .padding(.leading, 6)
-                .padding(.trailing, 12)
-                .frame(height: 52)
+                .padding(.leading, 5)
+                .padding(.trailing, 14)
+                .frame(height: 48)
                 .background(Theme.key, in: Capsule())
                 .overlay(Capsule().stroke(Theme.hairline, lineWidth: 1))
                 .shadow(color: Theme.shadow, radius: 2, y: 1)
@@ -157,7 +154,7 @@ private struct TopBar: View {
             .layoutPriority(1)
 
             AppearanceKey(appearance: $appearance)
-            IconKey(symbol: "cable.connector", size: 44) { sheet = .inputs }
+            IconKey(symbol: "cable.connector", size: 48) { sheet = .inputs }
             PowerKey()
         }
     }
@@ -177,7 +174,7 @@ private struct AppearanceKey: View {
             Image(systemName: appearance.symbol)
                 .font(.system(size: 14, weight: .semibold))
                 .contentTransition(.symbolEffect(.replace))
-                .frame(width: 44, height: 44)
+                .frame(width: 48, height: 48)
         }
         .accessibilityLabel("Appearance")
         .accessibilityValue(appearance.title)
@@ -690,7 +687,7 @@ private struct PowerKey: View {
         Image(systemName: "power")
             .font(.system(size: 14, weight: .semibold))
             .foregroundStyle(Theme.accent)
-            .frame(width: 44, height: 44)
+            .frame(width: 48, height: 48)
             .background(holding ? Theme.keyPressed : Theme.key, in: Circle())
             .overlay(Circle().stroke(Theme.hairline, lineWidth: 1))
             .overlay(
