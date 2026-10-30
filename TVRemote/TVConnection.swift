@@ -61,6 +61,7 @@ final class TVConnection: ObservableObject {
     private var socket: URLSessionWebSocketTask?
     private var pointer: URLSessionWebSocketTask?
     private var secure = true
+    private var retries = 0
     private var nextID = 0
     private var replies: [String: CheckedContinuation<[String: Any], Error>] = [:]
     private var subscriptions: [String: ([String: Any]) -> Void] = [:]
@@ -73,6 +74,7 @@ final class TVConnection: ObservableObject {
         self.host = host
         UserDefaults.standard.set(host, forKey: "host")
         secure = true
+        retries = 0
         open()
     }
 
@@ -89,6 +91,21 @@ final class TVConnection: ObservableObject {
         state = .connected
     }
     #endif
+
+    /// A TV this phone has already been allowed into. Once paired, the remote
+    /// stays on screen and reconnects quietly instead of going back to setup.
+    var isPaired: Bool {
+        guard let host else { return false }
+        return UserDefaults.standard.string(forKey: "key.\(host)") != nil
+    }
+
+    /// The app went to the background: iOS will kill the socket anyway, so close it cleanly.
+    func suspend() {
+        guard isPaired else { return }
+        close()
+        retries = 0
+        state = .idle
+    }
 
     func reconnect() {
         guard let host, state != .connected, state != .connecting, state != .waitingForApproval else { return }
@@ -124,6 +141,7 @@ final class TVConnection: ObservableObject {
             } else {
                 self.close()
                 self.state = .failed("No TV answered at \(host). Check the address and that the TV is on.")
+                self.retryIfPaired()
             }
         }
     }
@@ -194,6 +212,21 @@ final class TVConnection: ObservableObject {
         }
         close()
         state = .failed("Couldn't reach the TV. Check it's on and on the same Wi-Fi.")
+        retryIfPaired()
+    }
+
+    /// Paired TVs get a few quiet retries (1s, 2s, 4s, 8s) before we stop and wait
+    /// for the app to come back to the front.
+    private func retryIfPaired() {
+        guard isPaired, retries < 4 else { return }
+        let delay = 1 << retries
+        retries += 1
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(delay))
+            guard let self, case .failed = self.state else { return }
+            self.secure = true
+            self.open()
+        }
     }
 
     private func handle(_ json: [String: Any]) {
@@ -210,6 +243,7 @@ final class TVConnection: ObservableObject {
                     UserDefaults.standard.set(key, forKey: "key.\(host)")
                 }
                 state = .connected
+                retries = 0
                 Task { await didConnect() }
             case "error":
                 close()

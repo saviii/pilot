@@ -17,13 +17,14 @@ targets:
         CURRENT_PROJECT_VERSION: "1"
         SWIFT_VERSION: "5.0"
         TARGETED_DEVICE_FAMILY: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
     info:
       path: TVRemote/Info.plist
       properties:
-        CFBundleDisplayName: TV Remote
+        CFBundleDisplayName: Pilot
         UILaunchScreen: {}
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         UIAppFonts: [Doto.ttf, MartianMono.ttf]
-        NSLocalNetworkUsageDescription: TV Remote talks to your LG TV over your home Wi-Fi.
+        NSLocalNetworkUsageDescription: Pilot talks to your LG TV over your home Wi-Fi.
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true

@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>TV Remote</string>
+	<string>Pilot</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -26,7 +26,7 @@
 		<true/>
 	</dict>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>TV Remote talks to your LG TV over your home Wi-Fi.</string>
+	<string>Pilot talks to your LG TV over your home Wi-Fi.</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>Doto.ttf</string>

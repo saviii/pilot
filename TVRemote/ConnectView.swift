@@ -9,7 +9,7 @@ struct ConnectView: View {
         VStack(alignment: .leading, spacing: 24) {
             Spacer()
 
-            Caption("TV Remote")
+            Caption("Pilot")
 
             Text(headline)
                 .font(.system(size: 34, weight: .semibold))

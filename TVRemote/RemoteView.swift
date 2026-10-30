@@ -82,7 +82,11 @@ private struct TopBar: View {
                 Button("Forget this TV", role: .destructive) { tv.forget() }
             } label: {
                 HStack(spacing: 8) {
-                    Circle().fill(Theme.accent).frame(width: 6, height: 6)
+                    // Orange when connected; faint while it reconnects.
+                    Circle()
+                        .fill(tv.state == .connected ? Theme.accent : Theme.muted)
+                        .frame(width: 6, height: 6)
+                        .animation(.easeOut(duration: 0.2), value: tv.state == .connected)
                     Caption("LG · \(tv.host ?? "")")
                 }
                 .frame(height: 44)

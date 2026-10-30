@@ -9,7 +9,7 @@ struct TVRemoteApp: App {
     var body: some Scene {
         WindowGroup {
             Group {
-                if tv.state == .connected {
+                if tv.state == .connected || (tv.isPaired && tv.state != .waitingForApproval) {
                     RemoteView()
                 } else {
                     ConnectView()
@@ -22,6 +22,7 @@ struct TVRemoteApp: App {
                 if CommandLine.arguments.contains("-demo") { return tv.demo() }
                 #endif
                 if phase == .active { tv.reconnect() }
+                if phase == .background { tv.suspend() }
             }
         }
     }
