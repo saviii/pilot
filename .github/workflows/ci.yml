@@ -1,4 +1,5 @@
-# The same `make verify` agents run locally, plus demo screenshots to look at.
+# The same `make verify` agents run locally. Screenshots are the agent's job (`make shots`),
+# attached to the PR, not CI's.
 name: CI
 on:
   pull_request:
@@ -14,39 +15,12 @@ permissions:
   contents: read
 
 jobs:
+  # The check a PR needs to merge. About 2 minutes.
   verify:
     runs-on: macos-26
-    timeout-minutes: 30
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v5
-
-      - name: XcodeGen (pinned, so the generated project matches)
-        run: |
-          curl -fsSL -o /tmp/xcodegen.zip https://github.com/yonaskolb/XcodeGen/releases/download/2.46.0/xcodegen.zip
-          unzip -q /tmp/xcodegen.zip -d /tmp/xcodegen
-          echo "/tmp/xcodegen/xcodegen/bin" >> "$GITHUB_PATH"
-
-      - name: Versions
-        run: xcodebuild -version && swift --version && xcodegen --version
-
-      - uses: actions/cache@v4
-        with:
-          path: |
-            build/dd
-            PilotKit/.build
-          key: dd-${{ runner.os }}-${{ hashFiles('project.yml', 'PilotKit/Package.swift') }}
-          restore-keys: dd-${{ runner.os }}-
-
+      - uses: ./.github/actions/setup
       - name: make verify
         run: make verify
-
-      - name: Demo screenshots
-        if: github.event_name == 'pull_request'
-        run: SHOT_WAIT=8 make shots
-
-      - uses: actions/upload-artifact@v4
-        if: github.event_name == 'pull_request'
-        with:
-          name: screenshots
-          path: build/shots/*.png
-          if-no-files-found: ignore

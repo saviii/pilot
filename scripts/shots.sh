@@ -1,27 +1,18 @@
 #!/bin/sh
 # Demo-mode screenshots of the main screens, no TV needed: build/shots/*.png.
-# Uses the first available iPhone simulator (or $SIMULATOR, a name or UDID).
+# Reuses the app `make build` makes; boots a simulator if none is (see simulator.sh).
 set -eu
 cd "$(dirname "$0")/.."
-derived=build/dd-sim
 out=build/shots
+app=build/dd/Build/Products/Debug-iphonesimulator/TVRemote.app
 mkdir -p "$out"
 
-sim=${SIMULATOR:-$(xcrun simctl list devices available -j | python3 -c '
-import json, sys
-devices = json.load(sys.stdin)["devices"]
-import re
-phones = [d for runtime, ds in sorted(devices.items(), reverse=True) if "iOS" in runtime for d in ds if d["name"].startswith("iPhone")]
-# A regular "iPhone NN Pro" first (the shape the app is designed for), newest iOS first.
-pros = [d for d in phones if re.fullmatch(r"iPhone \d+ Pro", d["name"])]
-print((pros or phones)[0]["udid"] if phones else "")')}
+sim=$(scripts/simulator.sh)
 [ -n "$sim" ] || { echo "No iPhone simulator found. Add one in Xcode > Settings > Components."; exit 1; }
-
 xcrun simctl boot "$sim" 2>/dev/null || true
+make --no-print-directory build
 xcrun simctl bootstatus "$sim" -b >/dev/null
-xcodebuild -project TVRemote.xcodeproj -scheme TVRemote -derivedDataPath "$derived" -quiet \
-  -destination "id=$sim" CODE_SIGNING_ALLOWED=NO build
-xcrun simctl install "$sim" "$derived/Build/Products/Debug-iphonesimulator/TVRemote.app"
+xcrun simctl install "$sim" "$app"
 xcrun simctl status_bar "$sim" override --time 9:41 --batteryLevel 100 --batteryState charged --wifiBars 3 --cellularBars 4 || true
 
 # name, launch arguments, appearance

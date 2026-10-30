@@ -3,5 +3,5 @@
 ## How I checked it
 
 - [ ] `make verify` passes
-- [ ] UI change: screenshots below (from `make shots`, or CI's screenshots artifact)
+- [ ] UI change: before and after screenshots below (from `make shots`)
 - [ ] Tried on the phone with the TV (or: couldn't, and why)
