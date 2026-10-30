@@ -530,26 +530,44 @@ private struct VolumeLevel: View {
 
 // MARK: - Playback
 
-/// Rewind, one play/pause, fast-forward.
+/// Rewind, play/pause, fast-forward. If the app on screen reports whether it's
+/// playing, it's one key showing the true state. Most streaming apps don't, so
+/// then it's play and pause side by side: each always does what it shows.
 private struct Playback: View {
     @EnvironmentObject private var tv: TVConnection
-    /// The TV doesn't say whether something is playing, so we follow what was last pressed.
-    @State private var playing: Bool?
 
     var body: some View {
         HStack(spacing: 12) {
             IconKey(symbol: "backward.fill", size: 56, repeats: true) { tv.press(.rewind) }
-            Key(shape: Capsule(), action: {
-                if playing == true { tv.press(.pause); playing = false } else { tv.press(.play); playing = true }
-            }) {
-                Image(systemName: playing == true ? "pause.fill" : playing == false ? "play.fill" : "playpause.fill")
-                    .font(.system(size: 20, weight: .semibold))
-                    .contentTransition(.symbolEffect(.replace))
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 56)
+            if let state = tv.playState {
+                let playing = state == "playing"
+                Key(shape: Capsule(), action: {
+                    tv.press(playing ? .pause : .play)
+                    tv.playState = playing ? "paused" : "playing"   // the TV's report confirms it
+                }) {
+                    glyph(playing ? "pause.fill" : "play.fill")
+                }
+            } else {
+                HStack(spacing: 4) {
+                    Key(shape: UnevenRoundedRectangle(topLeadingRadius: 28, bottomLeadingRadius: 28,
+                                                      bottomTrailingRadius: 8, topTrailingRadius: 8),
+                        action: { tv.press(.play) }) { glyph("play.fill") }
+                    Key(shape: UnevenRoundedRectangle(topLeadingRadius: 8, bottomLeadingRadius: 8,
+                                                      bottomTrailingRadius: 28, topTrailingRadius: 28),
+                        action: { tv.press(.pause) }) { glyph("pause.fill") }
+                }
             }
             IconKey(symbol: "forward.fill", size: 56, repeats: true) { tv.press(.fastForward) }
         }
+        .animation(.easeOut(duration: 0.2), value: tv.playState == nil)
+    }
+
+    private func glyph(_ symbol: String) -> some View {
+        Image(systemName: symbol)
+            .font(.system(size: 20, weight: .semibold))
+            .contentTransition(.symbolEffect(.replace))
+            .frame(maxWidth: .infinity)
+            .frame(height: 56)
     }
 }
 

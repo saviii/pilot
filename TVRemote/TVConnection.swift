@@ -57,6 +57,8 @@ final class TVConnection: ObservableObject {
     @Published private(set) var muted = false
     /// The app on screen right now, from the TV.
     @Published private(set) var foreground: String?
+    /// "playing", "paused", … for the app on screen, when it reports one.
+    @Published var playState: String?
     @Published private(set) var host: String? = UserDefaults.standard.string(forKey: "host")
 
     private let session = URLSession(configuration: .default, delegate: LocalTrust(), delegateQueue: nil)
@@ -274,6 +276,11 @@ final class TVConnection: ObservableObject {
         subscribe("ssap://com.webos.applicationManager/getForegroundAppInfo") { [weak self] payload in
             self?.foreground = payload["appId"] as? String
         }
+        subscribe("ssap://com.webos.media/getForegroundAppInfo") { [weak self] payload in
+            let info = (payload["foregroundAppInfo"] as? [[String: Any]])?.first
+            log("\(self?.foreground ?? "?"): \(info?["playState"] as? String ?? "none")", "media")
+            self?.playState = info?["playState"] as? String
+        }
         subscribe("ssap://audio/getVolume") { [weak self] payload in
             let status = payload["volumeStatus"] as? [String: Any] ?? payload
             if let level = status["volume"] as? Int { self?.volume = level }
@@ -423,6 +430,20 @@ private func dump(_ object: [String: Any]?, _ name: String) {
           let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
     else { return }
     try? data.write(to: dir.appendingPathComponent("\(name).json"))
+}
+
+/// Appends a line to Documents/<name>.log, for debugging from the Mac.
+private func log(_ line: String, _ name: String) {
+    guard let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
+    let url = dir.appendingPathComponent("\(name).log")
+    let entry = Data("\(Date().formatted(date: .omitted, time: .standard)) \(line)\n".utf8)
+    if let handle = try? FileHandle(forWritingTo: url) {
+        handle.seekToEndOfFile()
+        handle.write(entry)
+        try? handle.close()
+    } else {
+        try? entry.write(to: url)
+    }
 }
 
 struct TVError: LocalizedError {
