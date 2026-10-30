@@ -41,9 +41,24 @@ final class TVConnection: ObservableObject {
 
     func image(_ url: URL) async -> UIImage? {
         if let cached = icons.object(forKey: url as NSURL) { return cached }
+        // Kept on the phone too, so logos show at once, even before the TV answers.
+        let file = Self.iconFile(url)
+        if let data = try? Data(contentsOf: file), let image = UIImage(data: data) {
+            icons.setObject(image, forKey: url as NSURL)
+            return image
+        }
         guard let (data, _) = try? await session.data(from: url), let image = UIImage(data: data) else { return nil }
         icons.setObject(image, forKey: url as NSURL)
+        try? FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try? data.write(to: file)
         return image
+    }
+
+    private static func iconFile(_ url: URL) -> URL {
+        let name = url.path.split(separator: "/").suffix(2).joined(separator: "-")
+        return FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("icons", isDirectory: true)
+            .appendingPathComponent(name)
     }
 
     /// The apps LG puts on its remote's shortcut keys, in that order.

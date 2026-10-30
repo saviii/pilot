@@ -172,19 +172,16 @@ struct AppIcon: View {
                 if let image {
                     Image(uiImage: image).resizable().scaledToFit().padding(inset).scaleEffect(zoom)
                 } else {
-                    // The name if it fits on a line, otherwise its first letter.
-                    // The name on one line, else two, else its first letter.
-                    ViewThatFits {
+                    // Until the logo arrives: the name, else its first word, else its first letter,
+                    // in a color that reads on the app's own (white on dark, dark on pale).
+                    ViewThatFits(in: .horizontal) {
                         Text(app.title).lineLimit(1).fixedSize()
-                        VStack(spacing: 1) {
-                            ForEach(app.title.split(separator: " ").map(String.init), id: \.self) { word in
-                                Text(word).lineLimit(1).fixedSize()
-                            }
-                        }
+                        Text(app.title.split(whereSeparator: { " :".contains($0) }).first.map(String.init) ?? app.title)
+                            .lineLimit(1).fixedSize()
                         Text(app.title.prefix(1))
                     }
                     .font(Theme.mono(9))
-                    .foregroundStyle(Theme.ink)
+                    .foregroundStyle(app.color == nil ? Theme.ink : (Color.isPale(app.color) ? Color.black.opacity(0.8) : Color.white))
                     .padding(4)
                 }
             }
