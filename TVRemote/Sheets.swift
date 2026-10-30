@@ -1141,8 +1141,22 @@ struct RemoteSettingsSheet: View {
                 haptic()
                 withAnimation(.easeInOut(duration: 0.2)) { pins.remove(app.id) }
             } label: {
-                AppIcon(app: app, radius: 25, inset: 6)
-                    .frame(height: 50)
+                HStack(spacing: 8) {
+                    AppIcon(app: app, radius: 7, inset: 2).frame(width: 28, height: 28)
+                    // The whole name if it fits, else its first word ("Prime").
+                    ViewThatFits(in: .horizontal) {
+                        Text(app.title).lineLimit(1).fixedSize()
+                        Text(app.title.split(separator: " ").first.map(String.init) ?? app.title).lineLimit(1)
+                    }
+                    .font(Theme.mono(10))
+                    Spacer(minLength: 0)
+                }
+                .padding(.leading, 10)
+                .padding(.trailing, 8)
+                .frame(maxWidth: .infinity)
+                .frame(height: 50)
+                .background(Theme.key, in: Capsule())
+                .overlay(Capsule().stroke(Theme.hairline, lineWidth: 1))
                     .overlay(alignment: .topLeading) {
                         // Its place on the remote, as a badge on the corner.
                         Text("\(index + 1)")

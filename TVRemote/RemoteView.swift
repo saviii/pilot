@@ -11,6 +11,7 @@ struct RemoteView: View {
     @StateObject private var sonos = Sonos()
     @Environment(\.scenePhase) private var scenePhase
     @State private var sheet: Sheet?
+    @AppStorage("appearance") private var appearance: Appearance = .system
 
     var body: some View {
         VStack(spacing: 0) {
@@ -75,6 +76,8 @@ struct RemoteView: View {
             }
             .presentationBackground(Theme.background)
             .presentationDragIndicator(.visible)
+            // Sheets are their own windows: give them the same appearance as the remote.
+            .preferredColorScheme(appearance.scheme)
             .environmentObject(tv)
         }
     }
@@ -587,17 +590,30 @@ private struct SixApps: View {
     @ViewBuilder
     private func slot(_ app: TVConnection.App?) -> some View {
         if let app {
+            // A key like the rest: a clear edge, the app's icon small at the left, its name.
             Button {
                 haptic()
                 tv.launch(app)
             } label: {
-                AppIcon(app: app, radius: 21, inset: 5)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 42)
-                    .overlay(Capsule().stroke(Theme.accent, lineWidth: 2).padding(-3).opacity(tv.foreground == app.id ? 1 : 0))
-                    .animation(.easeOut(duration: 0.2), value: tv.foreground)
+                HStack(spacing: 8) {
+                    AppIcon(app: app, radius: 7, inset: 2)
+                        .frame(width: 26, height: 26)
+                    // The whole name if it fits, else its first word ("Prime").
+                    ViewThatFits(in: .horizontal) {
+                        Text(app.title).lineLimit(1).fixedSize()
+                        Text(app.title.split(separator: " ").first.map(String.init) ?? app.title).lineLimit(1)
+                    }
+                    .font(Theme.mono(10))
+                    Spacer(minLength: 0)
+                }
+                .padding(.leading, 9)
+                .padding(.trailing, 8)
+                .frame(maxWidth: .infinity)
+                .frame(height: 44)
             }
-            .buttonStyle(Pressable())
+            .buttonStyle(KeyStyle(shape: Capsule()))
+            .overlay(Capsule().stroke(Theme.accent, lineWidth: 2).opacity(tv.foreground == app.id ? 1 : 0))
+            .animation(.easeOut(duration: 0.2), value: tv.foreground)
             .accessibilityLabel(app.title)
         } else {
             Button {
@@ -607,7 +623,7 @@ private struct SixApps: View {
                 Capsule()
                     .strokeBorder(Theme.muted.opacity(0.4), style: StrokeStyle(lineWidth: 1.5, lineCap: .round, dash: [0.1, 6]))
                     .frame(maxWidth: .infinity)
-                    .frame(height: 42)
+                    .frame(height: 44)
                     .contentShape(Capsule())
             }
             .buttonStyle(Pressable())
