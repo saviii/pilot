@@ -439,6 +439,12 @@ final class TVConnection: ObservableObject {
         sendPointer("type:button\nname:\(button.rawValue)")
     }
 
+    /// TEMPORARY: send any key name, to find which one the PS5 takes as its home button.
+    func pressRaw(_ name: String) {
+        log("\(foreground ?? "?") key \(name)", "keys")
+        sendPointer("type:button\nname:\(name)")
+    }
+
     func move(dx: Double, dy: Double) {
         sendPointer("type:move\ndx:\(Int(dx.rounded()))\ndy:\(Int(dy.rounded()))\ndown:0")
     }
@@ -513,11 +519,7 @@ final class TVConnection: ObservableObject {
         parts.queryItems = [URLQueryItem(name: "launch", value: "voice"), URLQueryItem(name: "vq", value: query)]
         let target = "https://www.youtube.com/tv?\(parts.percentEncodedQuery ?? "")"
         Task {
-            // An app only reads its launch link when it starts fresh, so close YouTube first.
-            if foreground == Self.youtube {
-                _ = try? await request("ssap://system.launcher/close", ["id": Self.youtube])
-                try? await Task.sleep(for: .milliseconds(900))
-            }
+            // Hand the search to YouTube as it is; no closing and reopening.
             let reply = try? await request("ssap://system.launcher/launch", ["id": Self.youtube, "params": ["contentTarget": target]])
             log("youtube search \(target) → \(reply ?? [:])", "ime")
         }

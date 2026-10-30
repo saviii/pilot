@@ -214,6 +214,18 @@ struct InputsSheet: View {
             if tv.inputs.isEmpty {
                 Text("No inputs found.").foregroundStyle(Theme.muted)
             }
+
+            // TEMPORARY: which key does the PS5 take as home?
+            if tv.foregroundInput != nil {
+                Caption("Test: PS5 home").padding(.top, 14)
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 4), spacing: 8) {
+                    ForEach(["EXIT", "MENU", "QMENU", "DASH", "INFO", "GUIDE", "LIST", "RECENT"], id: \.self) { name in
+                        Key(shape: RoundedRectangle(cornerRadius: 12), action: { tv.pressRaw(name) }) {
+                            Text(name).font(Theme.mono(10)).frame(maxWidth: .infinity).frame(height: 44)
+                        }
+                    }
+                }
+            }
             Spacer()
         }
         .padding(24)
