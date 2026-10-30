@@ -112,6 +112,47 @@ struct Key<Label: View, Background: Shape>: View {
     }
 }
 
+/// The same look as `Key`, as a ButtonStyle, for keys inside scroll views
+/// (a Button lets the scroll view take the drag; Key's gesture would swallow it).
+struct KeyStyle<S: Shape>: ButtonStyle {
+    let shape: S
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .foregroundStyle(Theme.ink)
+            .background(configuration.isPressed ? Theme.keyPressed : Theme.key, in: shape)
+            .overlay(shape.stroke(Theme.hairline, lineWidth: 1))
+            .shadow(color: configuration.isPressed ? .clear : Theme.shadow, radius: 2, y: 1)
+            .contentShape(shape)
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+            .animation(.easeOut(duration: 0.15), value: configuration.isPressed)
+    }
+}
+
+/// The apps you've put in the top strip, in the order you added them.
+/// Stored as app ids; seeded once with LG's own shortcut keys.
+struct Pins: DynamicProperty {
+    @AppStorage("pins") private var raw = ""
+    @AppStorage("pinsSeeded") private var seeded = false
+
+    var ids: [String] {
+        get { raw.split(separator: ",").map(String.init) }
+        nonmutating set { raw = newValue.joined(separator: ",") }
+    }
+
+    func contains(_ id: String) -> Bool { ids.contains(id) }
+
+    func toggle(_ id: String) {
+        if contains(id) { ids.removeAll { $0 == id } } else { ids.append(id) }
+    }
+
+    func seedIfNeeded(with apps: [TVConnection.App]) {
+        guard !seeded, !apps.isEmpty else { return }
+        ids = apps.map(\.id)
+        seeded = true
+    }
+}
+
 /// The common case: a round key with an SF Symbol.
 struct IconKey: View {
     let symbol: String
@@ -140,5 +181,15 @@ struct Caption: View {
             .font(Theme.mono(9))
             .tracking(1.2)
             .foregroundStyle(Theme.muted)
+    }
+}
+
+/// Presses in slightly, for buttons that aren't keys (the tiles in the apps sheet).
+struct Pressable: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+            .opacity(configuration.isPressed ? 0.8 : 1)
+            .animation(.easeOut(duration: 0.15), value: configuration.isPressed)
     }
 }

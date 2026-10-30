@@ -41,6 +41,9 @@ struct RemoteView: View {
         .padding(.top, 8)
         .padding(.bottom, 8)
         .background(Theme.background.ignoresSafeArea())
+        #if DEBUG
+        .onAppear { if CommandLine.arguments.contains("-apps") { sheet = .apps } }
+        #endif
         .sheet(item: $sheet) { kind in
             Group {
                 switch kind {
@@ -97,23 +100,38 @@ private struct TopBar: View {
 private struct AppKeys: View {
     @EnvironmentObject private var tv: TVConnection
     @Binding var sheet: Sheet?
+    private let pins = Pins()
+
+    private var pinned: [TVConnection.App] {
+        pins.ids.compactMap { id in tv.apps.first { $0.id == id } }
+    }
 
     var body: some View {
         HStack(spacing: 8) {
-            ForEach(tv.shortcuts) { app in
-                Key(shape: RoundedRectangle(cornerRadius: 14), action: { tv.launch(app) }) {
-                    AppIcon(app: app, inset: 4)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 50)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(pinned) { app in
+                        Button {
+                            haptic()
+                            tv.launch(app)
+                        } label: {
+                            AppIcon(app: app, inset: 4).frame(width: 66, height: 50)
+                        }
+                        .buttonStyle(KeyStyle(shape: RoundedRectangle(cornerRadius: 14)))
+                    }
                 }
+                .padding(.vertical, 2)
             }
+            .scrollClipDisabled()
+
             Key(shape: RoundedRectangle(cornerRadius: 14), action: { sheet = .apps }) {
-                Image(systemName: "square.grid.2x2.fill")
-                    .font(.system(size: 16, weight: .semibold))
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 50)
+                Image(systemName: "plus")
+                    .font(.system(size: 18, weight: .semibold))
+                    .frame(width: 50, height: 50)
             }
         }
+        .onAppear { pins.seedIfNeeded(with: tv.shortcuts) }
+        .onChange(of: tv.apps) { pins.seedIfNeeded(with: tv.shortcuts) }
     }
 }
 

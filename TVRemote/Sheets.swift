@@ -135,32 +135,48 @@ struct NumberPadSheet: View {
     }
 }
 
+/// Every app on the TV. Tap one to put it in the top strip; tap again to take it out.
 struct AppsSheet: View {
     @EnvironmentObject private var tv: TVConnection
-    @Environment(\.dismiss) private var dismiss
+    private let pins = Pins()
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 12), count: 4)
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                Caption("Apps")
+                Caption("Add to the top")
                 LazyVGrid(columns: columns, spacing: 16) {
                     ForEach(tv.apps) { app in
-                        VStack(spacing: 8) {
-                            Key(shape: RoundedRectangle(cornerRadius: 18), action: {
-                                tv.launch(app)
-                                dismiss()
-                            }) {
+                        let pinned = pins.contains(app.id)
+                        Button {
+                            haptic()
+                            pins.toggle(app.id)
+                        } label: {
+                            VStack(spacing: 8) {
                                 AppIcon(app: app, radius: 18, inset: 8)
                                     .frame(width: 72, height: 72)
+                                    .overlay(alignment: .topTrailing) {
+                                        if pinned {
+                                            Image(systemName: "checkmark")
+                                                .font(.system(size: 11, weight: .bold))
+                                                .foregroundStyle(Theme.background)
+                                                .frame(width: 22, height: 22)
+                                                .background(Theme.accent, in: Circle())
+                                                .overlay(Circle().stroke(Theme.background, lineWidth: 2))
+                                                .offset(x: 6, y: -6)
+                                                .transition(.scale(scale: 0.95).combined(with: .opacity))
+                                        }
+                                    }
+                                    .animation(.easeOut(duration: 0.15), value: pinned)
+                                Text(app.title)
+                                    .font(.caption)
+                                    .foregroundStyle(Theme.ink.opacity(0.8))
+                                    .lineLimit(1)
+                                    .frame(maxWidth: 80)
                             }
-                            Text(app.title)
-                                .font(.caption)
-                                .foregroundStyle(Theme.ink.opacity(0.8))
-                                .lineLimit(1)
-                                .frame(maxWidth: 80)
                         }
+                        .buttonStyle(Pressable())
                     }
                 }
             }
