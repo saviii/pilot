@@ -22,8 +22,11 @@ struct ConnectView: View {
 
             if tv.state == .connecting || tv.state == .waitingForApproval {
                 ProgressView().tint(Theme.accent)
+                Button("Cancel") { tv.cancel() }
+                    .font(Theme.mono(12))
+                    .foregroundStyle(Theme.muted)
             } else {
-                TextField("192.168.1.20", text: $address)
+                TextField("TV address", text: $address)
                     .keyboardType(.numbersAndPunctuation)
                     .font(Theme.mono(18))
                     .tint(Theme.accent)

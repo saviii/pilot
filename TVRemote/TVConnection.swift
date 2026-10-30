@@ -97,6 +97,23 @@ final class TVConnection: ObservableObject {
         task.resume()
         listen(on: task)
         register()
+        // Give up if the TV doesn't answer, instead of spinning forever.
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(6))
+            guard let self, self.socket === task, self.state == .connecting else { return }
+            if self.secure {
+                self.secure = false
+                self.open()
+            } else {
+                self.close()
+                self.state = .failed("No TV answered at \(host). Check the address and that the TV is on.")
+            }
+        }
+    }
+
+    func cancel() {
+        close()
+        state = .idle
     }
 
     private func close() {
