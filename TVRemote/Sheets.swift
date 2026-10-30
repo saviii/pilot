@@ -578,18 +578,18 @@ struct ScreenshotSheet: View {
                 .buttonStyle(Pressable())
                 .disabled(image == nil || saved)
 
-                if let image {
-                    ShareLink(item: Image(uiImage: image), preview: SharePreview("TV screenshot", image: Image(uiImage: image))) {
-                        Label("Share", systemImage: "square.and.arrow.up")
-                            .font(.subheadline.weight(.semibold))
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 48)
-                            .foregroundStyle(Theme.ink)
-                            .background(Theme.key, in: RoundedRectangle(cornerRadius: 14))
-                            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.hairline))
+                // Always there, so the two buttons never shift; it just wakes up with the picture.
+                Group {
+                    if let image {
+                        ShareLink(item: Image(uiImage: image), preview: SharePreview("TV screenshot", image: Image(uiImage: image))) {
+                            shareLabel
+                        }
+                    } else {
+                        shareLabel
                     }
                 }
             }
+            .opacity(image == nil ? 0.5 : 1)
             .animation(.easeOut(duration: 0.15), value: saved)
         }
         .padding(24)
@@ -599,5 +599,15 @@ struct ScreenshotSheet: View {
             do { image = try await tv.screenshot() }
             catch { failure = "Couldn't get a screenshot: \(error.localizedDescription)" }
         }
+    }
+
+    private var shareLabel: some View {
+        Label("Share", systemImage: "square.and.arrow.up")
+            .font(.subheadline.weight(.semibold))
+            .frame(maxWidth: .infinity)
+            .frame(height: 48)
+            .foregroundStyle(Theme.ink)
+            .background(Theme.key, in: RoundedRectangle(cornerRadius: 14))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.hairline))
     }
 }
