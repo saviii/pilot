@@ -196,6 +196,13 @@ struct AppIcon: View {
 }
 
 extension Color {
+    /// White or near-white ("#ffffff"): it needs a stronger outline to show its edge.
+    static func isPale(_ hex: String?) -> Bool {
+        guard let hex, hex.hasPrefix("#"), hex.count == 7, let v = Int(hex.dropFirst(), radix: 16) else { return false }
+        let r = Double((v >> 16) & 0xFF), g = Double((v >> 8) & 0xFF), b = Double(v & 0xFF)
+        return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 > 0.85
+    }
+
     /// "#FD312E" → Color. Nil for anything else.
     init?(hex: String?) {
         guard let hex, hex.hasPrefix("#"), hex.count == 7, let value = Int(hex.dropFirst(), radix: 16) else { return nil }
@@ -601,7 +608,7 @@ private struct SixApps: View {
                 AppIcon(app: app, radius: 22, inset: 0, zoom: 1.35)
                     .frame(maxWidth: .infinity)
                     .frame(height: 44)
-                    .overlay(Capsule().stroke(Theme.ink.opacity(0.14), lineWidth: 1))
+                    .overlay(Capsule().stroke(Theme.ink.opacity(Color.isPale(app.color) ? 0.3 : 0.14), lineWidth: 1))
                     .shadow(color: .black.opacity(0.12), radius: 3, y: 1)
             }
             .buttonStyle(Pressable())

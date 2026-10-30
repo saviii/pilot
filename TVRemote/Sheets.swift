@@ -1144,7 +1144,7 @@ struct RemoteSettingsSheet: View {
                 AppIcon(app: app, radius: 25, inset: 0, zoom: 1.35)
                 .frame(maxWidth: .infinity)
                 .frame(height: 50)
-                .overlay(Capsule().stroke(Theme.ink.opacity(0.14), lineWidth: 1))
+                .overlay(Capsule().stroke(Theme.ink.opacity(Color.isPale(app.color) ? 0.3 : 0.14), lineWidth: 1))
                 .shadow(color: .black.opacity(0.12), radius: 3, y: 1)
                     .overlay(alignment: .topLeading) {
                         // Its place on the remote, as a badge on the corner.
