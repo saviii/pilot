@@ -70,11 +70,33 @@ private struct TopBar: View {
     @EnvironmentObject private var tv: TVConnection
     @Binding var sheet: Sheet?
     @AppStorage("appearance") private var appearance: Appearance = .system
+    @State private var renaming = false
+    @State private var name = ""
 
     var body: some View {
         HStack(spacing: 12) {
             Menu {
-                Button("Forget this TV", role: .destructive) { tv.forget() }
+                Section {
+                    ForEach(tv.saved) { saved in
+                        Button {
+                            if saved.host != tv.host { tv.connect(to: saved.host) }
+                        } label: {
+                            if saved.host == tv.host {
+                                Label(saved.name, systemImage: "checkmark")
+                            } else {
+                                Text(saved.name)
+                            }
+                        }
+                    }
+                }
+                Button("Add a TV", systemImage: "plus") { tv.startAdding() }
+                Section {
+                    Button("Rename this TV", systemImage: "pencil") {
+                        name = tv.current?.name ?? ""
+                        renaming = true
+                    }
+                    Button("Forget this TV", systemImage: "trash", role: .destructive) { tv.forget() }
+                }
             } label: {
                 HStack(spacing: 8) {
                     if tv.state == .connected, let app = tv.foregroundApp {
@@ -86,7 +108,7 @@ private struct TopBar: View {
                         Circle()
                             .fill(tv.state == .connected ? Theme.accent : Theme.muted)
                             .frame(width: 6, height: 6)
-                        Caption("LG · \(tv.host ?? "")")
+                        Caption(tv.current?.name ?? "LG · \(tv.host ?? "")")
                     }
                 }
                 .frame(height: 44)
@@ -98,6 +120,11 @@ private struct TopBar: View {
             IconKey(symbol: "cable.connector", size: 44) { sheet = .inputs }
             IconKey(symbol: "gearshape.fill", size: 44) { tv.press(.settings) }
             PowerKey()
+        }
+        .alert("Rename this TV", isPresented: $renaming) {
+            TextField("Living room", text: $name)
+            Button("Save") { tv.rename(to: name) }
+            Button("Cancel", role: .cancel) {}
         }
     }
 }

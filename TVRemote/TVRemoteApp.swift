@@ -9,7 +9,7 @@ struct TVRemoteApp: App {
     var body: some Scene {
         WindowGroup {
             Group {
-                if tv.state == .connected || (tv.isPaired && tv.state != .waitingForApproval) {
+                if !tv.adding && (tv.state == .connected || (tv.isPaired && tv.state != .waitingForApproval)) {
                     RemoteView()
                 } else {
                     ConnectView()

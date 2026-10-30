@@ -61,6 +61,62 @@ final class TVConnection: ObservableObject {
     @Published var playState: String?
     @Published private(set) var host: String? = UserDefaults.standard.string(forKey: "host")
 
+    /// Every TV this phone has paired with.
+    struct SavedTV: Codable, Hashable, Identifiable {
+        var host: String
+        var name: String
+        var id: String { host }
+    }
+    @Published private(set) var saved: [SavedTV] = {
+        guard let data = UserDefaults.standard.data(forKey: "tvs"),
+              let list = try? JSONDecoder().decode([SavedTV].self, from: data) else { return [] }
+        return list
+    }()
+    /// Showing setup to add another TV, while staying paired with this one.
+    @Published var adding = false
+    private var hostBeforeAdding: String?
+
+    var current: SavedTV? { saved.first { $0.host == host } }
+
+    init() {
+        // Phones paired before there was a TV list: keep that TV.
+        if saved.isEmpty, let host, UserDefaults.standard.string(forKey: "key.\(host)") != nil {
+            save([SavedTV(host: host, name: "Living room")])
+        }
+    }
+
+    private func save(_ list: [SavedTV]) {
+        saved = list
+        UserDefaults.standard.set(try? JSONEncoder().encode(list), forKey: "tvs")
+    }
+
+    func rename(to name: String) {
+        let name = name.trimmingCharacters(in: .whitespaces)
+        guard !name.isEmpty, let host else { return }
+        save(saved.map { $0.host == host ? SavedTV(host: host, name: name) : $0 })
+    }
+
+    func startAdding() {
+        hostBeforeAdding = host
+        adding = true
+    }
+
+    func stopAdding() {
+        adding = false
+        if let previous = hostBeforeAdding, previous != host || state != .connected { connect(to: previous) }
+        hostBeforeAdding = nil
+    }
+
+    /// Checks whether an address on the Wi-Fi is an LG TV: they answer on the
+    /// TLS remote port with a plain 200.
+    func isTV(_ address: String) async -> Bool {
+        guard let url = URL(string: "https://\(address):3001/") else { return false }
+        var request = URLRequest(url: url, timeoutInterval: 1.5)
+        request.httpMethod = "GET"
+        guard let (_, response) = try? await session.data(for: request) else { return false }
+        return (response as? HTTPURLResponse)?.statusCode == 200
+    }
+
     private let session = URLSession(configuration: .default, delegate: LocalTrust(), delegateQueue: nil)
     private var socket: URLSessionWebSocketTask?
     private var pointer: URLSessionWebSocketTask?
@@ -75,6 +131,10 @@ final class TVConnection: ObservableObject {
     func connect(to host: String) {
         let host = host.trimmingCharacters(in: .whitespaces)
         guard !host.isEmpty else { return }
+        if host != self.host {
+            // A different TV: drop what we knew about the last one.
+            apps = []; inputs = []; volume = nil; muted = false; foreground = nil; playState = nil
+        }
         self.host = host
         UserDefaults.standard.set(host, forKey: "host")
         secure = true
@@ -117,12 +177,19 @@ final class TVConnection: ObservableObject {
         connect(to: host)
     }
 
+    /// Forget the current TV. If there's another one, switch to it.
     func forget() {
-        if let host { UserDefaults.standard.removeObject(forKey: "key.\(host)") }
-        UserDefaults.standard.removeObject(forKey: "host")
+        guard let host else { return }
+        UserDefaults.standard.removeObject(forKey: "key.\(host)")
+        save(saved.filter { $0.host != host })
         close()
-        host = nil
-        state = .idle
+        if let next = saved.first {
+            connect(to: next.host)
+        } else {
+            UserDefaults.standard.removeObject(forKey: "host")
+            self.host = nil
+            state = .idle
+        }
     }
 
     private func open() {
@@ -249,6 +316,11 @@ final class TVConnection: ObservableObject {
                 }
                 state = .connected
                 retries = 0
+                if let host, !saved.contains(where: { $0.host == host }) {
+                    save(saved + [SavedTV(host: host, name: saved.isEmpty ? "Living room" : "TV \(saved.count + 1)")])
+                }
+                adding = false
+                hostBeforeAdding = nil
                 Task { await didConnect() }
             case "error":
                 close()
