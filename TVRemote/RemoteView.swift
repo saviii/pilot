@@ -590,26 +590,15 @@ private struct SixApps: View {
     @ViewBuilder
     private func slot(_ app: TVConnection.App?) -> some View {
         if let app {
-            // A key like the rest: a clear edge, the app's icon small at the left, its name.
+            // A key like the rest: a clear edge, the app's own icon centered (it carries the name).
             Button {
                 haptic()
                 tv.launch(app)
             } label: {
-                HStack(spacing: 8) {
-                    AppIcon(app: app, radius: 7, inset: 2)
-                        .frame(width: 26, height: 26)
-                    // The whole name if it fits, else its first word ("Prime").
-                    ViewThatFits(in: .horizontal) {
-                        Text(app.title).lineLimit(1).fixedSize()
-                        Text(app.title.split(separator: " ").first.map(String.init) ?? app.title).lineLimit(1)
-                    }
-                    .font(Theme.mono(10))
-                    Spacer(minLength: 0)
-                }
-                .padding(.leading, 9)
-                .padding(.trailing, 8)
-                .frame(maxWidth: .infinity)
-                .frame(height: 44)
+                AppIcon(app: app, radius: 8, inset: 2)
+                    .frame(width: 32, height: 32)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 44)
             }
             .buttonStyle(KeyStyle(shape: Capsule()))
             .overlay(Capsule().stroke(Theme.accent, lineWidth: 2).opacity(tv.foreground == app.id ? 1 : 0))
