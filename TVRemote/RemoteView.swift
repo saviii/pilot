@@ -161,6 +161,8 @@ struct AppIcon: View {
     let app: TVConnection.App
     var radius: CGFloat = 14
     var inset: CGFloat = 6
+    /// Enlarge the TV's icon art inside its frame (its own background fills the rest).
+    var zoom: CGFloat = 1
     @State private var image: UIImage?
 
     var body: some View {
@@ -168,7 +170,7 @@ struct AppIcon: View {
             .fill(Color(hex: app.color) ?? Theme.key)
             .overlay {
                 if let image {
-                    Image(uiImage: image).resizable().scaledToFit().padding(inset)
+                    Image(uiImage: image).resizable().scaledToFit().padding(inset).scaleEffect(zoom)
                 } else {
                     // The name if it fits on a line, otherwise its first letter.
                     // The name on one line, else two, else its first letter.
@@ -590,17 +592,19 @@ private struct SixApps: View {
     @ViewBuilder
     private func slot(_ app: TVConnection.App?) -> some View {
         if let app {
-            // A key like the rest: a clear edge, the app's own icon centered (it carries the name).
+            // The app's own color edge to edge, its logo large; an outline and a shadow
+            // keep the edge clear even when the color is close to the background.
             Button {
                 haptic()
                 tv.launch(app)
             } label: {
-                AppIcon(app: app, radius: 8, inset: 2)
-                    .frame(width: 32, height: 32)
+                AppIcon(app: app, radius: 22, inset: 0, zoom: 1.35)
                     .frame(maxWidth: .infinity)
                     .frame(height: 44)
+                    .overlay(Capsule().stroke(Theme.ink.opacity(0.14), lineWidth: 1))
+                    .shadow(color: .black.opacity(0.12), radius: 3, y: 1)
             }
-            .buttonStyle(KeyStyle(shape: Capsule()))
+            .buttonStyle(Pressable())
             .overlay(Capsule().stroke(Theme.accent, lineWidth: 2).opacity(tv.foreground == app.id ? 1 : 0))
             .animation(.easeOut(duration: 0.2), value: tv.foreground)
             .accessibilityLabel(app.title)

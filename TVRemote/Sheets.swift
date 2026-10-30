@@ -1141,11 +1141,11 @@ struct RemoteSettingsSheet: View {
                 haptic()
                 withAnimation(.easeInOut(duration: 0.2)) { pins.remove(app.id) }
             } label: {
-                AppIcon(app: app, radius: 9, inset: 2).frame(width: 34, height: 34)
+                AppIcon(app: app, radius: 25, inset: 0, zoom: 1.35)
                 .frame(maxWidth: .infinity)
                 .frame(height: 50)
-                .background(Theme.key, in: Capsule())
-                .overlay(Capsule().stroke(Theme.hairline, lineWidth: 1))
+                .overlay(Capsule().stroke(Theme.ink.opacity(0.14), lineWidth: 1))
+                .shadow(color: .black.opacity(0.12), radius: 3, y: 1)
                     .overlay(alignment: .topLeading) {
                         // Its place on the remote, as a badge on the corner.
                         Text("\(index + 1)")
