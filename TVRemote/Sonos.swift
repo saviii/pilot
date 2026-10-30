@@ -11,7 +11,7 @@ final class Sonos: ObservableObject {
     @Published private(set) var host: String? = UserDefaults.standard.string(forKey: "sonos")
     @Published private(set) var room = UserDefaults.standard.string(forKey: "sonos.room") ?? "Sonos"
     @Published private(set) var model = UserDefaults.standard.string(forKey: "sonos.model") ?? ""
-    private var player = UserDefaults.standard.string(forKey: "sonos.player")   // RINCON_… id
+    private var player = UserDefaults.standard.string(forKey: "sonos.player")  // RINCON_… id
 
     @Published private(set) var onTV = true
     /// Something is AirPlaying to it (this phone, most likely).
@@ -61,8 +61,9 @@ final class Sonos: ObservableObject {
         var request = URLRequest(url: url, timeoutInterval: 1.5)
         request.httpMethod = "GET"
         guard let (data, _) = try? await URLSession.shared.data(for: request),
-              let xml = String(data: data, encoding: .utf8),
-              let speaker = SonosSOAP.describe(xml) else { return nil }
+            let xml = String(data: data, encoding: .utf8),
+            let speaker = SonosSOAP.describe(xml)
+        else { return nil }
         return (address, speaker.room, speaker.model, speaker.player)
     }
 
@@ -80,7 +81,8 @@ final class Sonos: ObservableObject {
             track = onTV ? nil : SonosSOAP.track(from: Self.value("TrackMetaData", in: xml), host: host)
         }
         if let xml = try? await call(.rendering, "GetVolume", [("Channel", "Master")]),
-           let level = Self.value("CurrentVolume", in: xml).flatMap(Int.init) {
+            let level = Self.value("CurrentVolume", in: xml).flatMap(Int.init)
+        {
             volume = level
             reachable = true
         } else {
@@ -144,15 +146,24 @@ final class Sonos: ObservableObject {
         Task { _ = try? await call(.transport, action, action == "Play" ? [("Speed", "1")] : []) }
     }
 
-    func next() { Task { _ = try? await call(.transport, "Next"); await refresh() } }
-    func previous() { Task { _ = try? await call(.transport, "Previous"); await refresh() } }
+    func next() {
+        Task {
+            _ = try? await call(.transport, "Next"); await refresh()
+        }
+    }
+    func previous() {
+        Task {
+            _ = try? await call(.transport, "Previous"); await refresh()
+        }
+    }
 
     /// Put the TV's sound back on the Sonos (after it's been playing music).
     func backToTV() {
         guard let player else { return }
         Task {
-            _ = try? await call(.transport, "SetAVTransportURI",
-                                [("CurrentURI", "x-sonos-htastream:\(player):spdif"), ("CurrentURIMetaData", "")])
+            _ = try? await call(
+                .transport, "SetAVTransportURI",
+                [("CurrentURI", "x-sonos-htastream:\(player):spdif"), ("CurrentURIMetaData", "")])
             await refresh()
         }
     }

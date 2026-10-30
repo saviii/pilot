@@ -49,14 +49,16 @@ struct RemoteView: View {
         // The phone's keyboard covers the remote rather than squashing it.
         .ignoresSafeArea(.keyboard)
         #if DEBUG
-        .onAppear {
-            if CommandLine.arguments.contains("-apps") { sheet = .remote }
-            if CommandLine.arguments.contains("-tvs") { sheet = .tvs }
-            if CommandLine.arguments.contains("-kb") { sheet = .keyboard }
-            if CommandLine.arguments.contains("-sonos") {
-                Task { await sonos.findIfNeeded(); sheet = .sonos }
+            .onAppear {
+                if CommandLine.arguments.contains("-apps") { sheet = .remote }
+                if CommandLine.arguments.contains("-tvs") { sheet = .tvs }
+                if CommandLine.arguments.contains("-kb") { sheet = .keyboard }
+                if CommandLine.arguments.contains("-sonos") {
+                    Task {
+                        await sonos.findIfNeeded(); sheet = .sonos
+                    }
+                }
             }
-        }
         #endif
         // When the TV asks for text, the keyboard comes up on its own, and goes when the TV's does.
         .onChange(of: tv.keyboardOpen) { _, open in
@@ -273,7 +275,7 @@ private struct ClickWheel: View {
                 DragGesture(minimumDistance: 0)
                     .onChanged { value in
                         guard active == nil,
-                              let zone = zone(at: value.startLocation, radius: radius, inner: inner)
+                            let zone = zone(at: value.startLocation, radius: radius, inner: inner)
                         else { return }
                         active = zone
                         if zone != .ok { startRepeating(zone) }
@@ -308,13 +310,14 @@ private struct ClickWheel: View {
     }
 
     private func startRepeating(_ zone: Zone) {
-        let button: TVConnection.Button = switch zone {
-        case .up: .up
-        case .down: .down
-        case .left: .left
-        case .right: .right
-        case .ok: .enter
-        }
+        let button: TVConnection.Button =
+            switch zone {
+            case .up: .up
+            case .down: .down
+            case .left: .left
+            case .right: .right
+            case .ok: .enter
+            }
         haptic(.light)
         tv.press(button)
         repeating = Task { @MainActor in
@@ -348,9 +351,11 @@ private struct DotRing: View {
                     let x = CGFloat(col) * pitch, y = CGFloat(row) * pitch
                     let distance = hypot(x, y)
                     guard distance > inner, distance < outer else { continue }
-                    let nearArrow = [CGPoint(x: 0, y: marker), CGPoint(x: 0, y: -marker),
-                                     CGPoint(x: marker, y: 0), CGPoint(x: -marker, y: 0)]
-                        .contains { hypot(x - $0.x, y - $0.y) < pitch * 1.3 }
+                    let nearArrow = [
+                        CGPoint(x: 0, y: marker), CGPoint(x: 0, y: -marker),
+                        CGPoint(x: marker, y: 0), CGPoint(x: -marker, y: 0),
+                    ]
+                    .contains { hypot(x - $0.x, y - $0.y) < pitch * 1.3 }
                     if nearArrow { continue }
                     path.addEllipse(in: CGRect(x: center.x + x - dot, y: center.y + y - dot, width: dot * 2, height: dot * 2))
                 }
@@ -369,12 +374,13 @@ private struct Wedge: Shape {
     func path(in rect: CGRect) -> Path {
         let center = CGPoint(x: rect.midX, y: rect.midY)
         let outer = min(rect.width, rect.height) / 2
-        let mid: Double = switch zone {
-        case .right: 0
-        case .down: 90
-        case .left: 180
-        default: 270
-        }
+        let mid: Double =
+            switch zone {
+            case .right: 0
+            case .down: 90
+            case .left: 180
+            default: 270
+            }
         var path = Path()
         path.addArc(center: center, radius: outer, startAngle: .degrees(mid - 45), endAngle: .degrees(mid + 45), clockwise: false)
         path.addArc(center: center, radius: inner, startAngle: .degrees(mid + 45), endAngle: .degrees(mid - 45), clockwise: true)
@@ -459,10 +465,13 @@ private struct PlayPause: View {
     var body: some View {
         if let state = tv.playState {
             let playing = state == "playing"
-            Key(shape: Capsule(), action: {
-                tv.press(playing ? .pause : .play)
-                tv.playState = playing ? "paused" : "playing"   // the TV's report confirms it
-            }) {
+            Key(
+                shape: Capsule(),
+                action: {
+                    tv.press(playing ? .pause : .play)
+                    tv.playState = playing ? "paused" : "playing"  // the TV's report confirms it
+                }
+            ) {
                 Image(systemName: playing ? "pause.fill" : "play.fill")
                     .font(.system(size: 18, weight: .semibold))
                     .contentTransition(.symbolEffect(.replace))
@@ -472,14 +481,20 @@ private struct PlayPause: View {
             .accessibilityLabel(playing ? "Pause" : "Play")
         } else {
             HStack(spacing: 2) {
-                Key(shape: UnevenRoundedRectangle(topLeadingRadius: 27, bottomLeadingRadius: 27,
-                                                  bottomTrailingRadius: 6, topTrailingRadius: 6),
-                    action: { tv.press(.play) }) { half("play.fill") }
-                    .accessibilityLabel("Play")
-                Key(shape: UnevenRoundedRectangle(topLeadingRadius: 6, bottomLeadingRadius: 6,
-                                                  bottomTrailingRadius: 27, topTrailingRadius: 27),
-                    action: { tv.press(.pause) }) { half("pause.fill") }
-                    .accessibilityLabel("Pause")
+                Key(
+                    shape: UnevenRoundedRectangle(
+                        topLeadingRadius: 27, bottomLeadingRadius: 27,
+                        bottomTrailingRadius: 6, topTrailingRadius: 6),
+                    action: { tv.press(.play) }
+                ) { half("play.fill") }
+                .accessibilityLabel("Play")
+                Key(
+                    shape: UnevenRoundedRectangle(
+                        topLeadingRadius: 6, bottomLeadingRadius: 6,
+                        bottomTrailingRadius: 27, topTrailingRadius: 27),
+                    action: { tv.press(.pause) }
+                ) { half("pause.fill") }
+                .accessibilityLabel("Pause")
             }
         }
     }
@@ -609,9 +624,11 @@ private struct SixApps: View {
                     .frame(maxWidth: .infinity)
                     .frame(height: 44)
                     // White pills get a dark line just inside the edge, in both modes: a light one blurs into the white.
-                    .overlay(Color.isPale(app.color)
-                             ? Capsule().strokeBorder(Color.black.opacity(0.22), lineWidth: 1)
-                             : Capsule().strokeBorder(Theme.ink.opacity(0.14), lineWidth: 1))
+                    .overlay(
+                        Color.isPale(app.color)
+                            ? Capsule().strokeBorder(Color.black.opacity(0.22), lineWidth: 1)
+                            : Capsule().strokeBorder(Theme.ink.opacity(0.14), lineWidth: 1)
+                    )
                     .shadow(color: .black.opacity(0.12), radius: 3, y: 1)
             }
             .buttonStyle(Pressable())

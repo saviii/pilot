@@ -44,10 +44,11 @@ enum Theme {
     }
 
     private static func adaptive(light: (Int, Int, Int, Double), dark: (Int, Int, Int, Double)) -> Color {
-        Color(UIColor { traits in
-            let c = traits.userInterfaceStyle == .dark ? dark : light
-            return UIColor(red: CGFloat(c.0) / 255, green: CGFloat(c.1) / 255, blue: CGFloat(c.2) / 255, alpha: c.3)
-        })
+        Color(
+            UIColor { traits in
+                let c = traits.userInterfaceStyle == .dark ? dark : light
+                return UIColor(red: CGFloat(c.0) / 255, green: CGFloat(c.1) / 255, blue: CGFloat(c.2) / 255, alpha: c.3)
+            })
     }
 
     /// Doto, the dot-matrix face, for numbers.

@@ -1,6 +1,7 @@
 import Foundation
-@testable import PilotKit
 import Testing
+
+@testable import PilotKit
 
 /// A KeyValueStore that's just a dictionary.
 final class MemoryStore: KeyValueStore {

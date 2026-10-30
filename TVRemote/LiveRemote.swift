@@ -9,16 +9,18 @@ enum LiveRemote {
     }
 
     private static func state(_ tv: TVConnection) -> PilotActivityAttributes.ContentState {
-        .init(tv: tv.current?.name ?? "TV", app: tv.foregroundApp?.title ?? tv.foregroundInput?.label,
-              appColor: tv.foregroundApp?.color, volume: tv.volume, muted: tv.muted)
+        .init(
+            tv: tv.current?.name ?? "TV", app: tv.foregroundApp?.title ?? tv.foregroundInput?.label,
+            appColor: tv.foregroundApp?.color, volume: tv.volume, muted: tv.muted)
     }
 
     /// You left Pilot while connected: put the panel up.
     static func start(_ tv: TVConnection) {
         guard tv.state == .connected, ActivityAuthorizationInfo().areActivitiesEnabled else { return }
         if activity != nil { return update(tv) }
-        _ = try? Activity.request(attributes: PilotActivityAttributes(),
-                                  content: .init(state: state(tv), staleDate: nil))
+        _ = try? Activity.request(
+            attributes: PilotActivityAttributes(),
+            content: .init(state: state(tv), staleDate: nil))
     }
 
     static func update(_ tv: TVConnection) {

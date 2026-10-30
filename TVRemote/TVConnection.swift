@@ -161,19 +161,21 @@ final class TVConnection: ObservableObject {
     }
 
     #if DEBUG
-    /// Launch with `-demo` to see the remote without a TV.
-    func demo() {
-        host = "192.168.1.20"
-        volume = 14
-        foreground = CommandLine.arguments.contains("-ps5") ? "com.webos.app.hdmi2" : "Netflix"
-        saved = [SavedTV(host: "192.168.1.20", name: "Living room"), SavedTV(host: "192.168.1.31", name: "Upstairs")]
-        apps = ["Netflix", "Prime Video", "Disney+", "YouTube", "Apple TV", "Spotify", "LG Channels", "Twitch"]
-            .map { App(id: $0, title: $0, icon: nil) }
-        inputs = [Input(id: "HDMI_1", label: "HDMI 1", connected: true),
-                  Input(id: "HDMI_2", label: "PlayStation 5", connected: true, port: 2, appId: "com.webos.app.hdmi2"),
-                  Input(id: "HDMI_3", label: "HDMI 3", connected: false)]
-        state = .connected
-    }
+        /// Launch with `-demo` to see the remote without a TV.
+        func demo() {
+            host = "192.168.1.20"
+            volume = 14
+            foreground = CommandLine.arguments.contains("-ps5") ? "com.webos.app.hdmi2" : "Netflix"
+            saved = [SavedTV(host: "192.168.1.20", name: "Living room"), SavedTV(host: "192.168.1.31", name: "Upstairs")]
+            apps = ["Netflix", "Prime Video", "Disney+", "YouTube", "Apple TV", "Spotify", "LG Channels", "Twitch"]
+                .map { App(id: $0, title: $0, icon: nil) }
+            inputs = [
+                Input(id: "HDMI_1", label: "HDMI 1", connected: true),
+                Input(id: "HDMI_2", label: "PlayStation 5", connected: true, port: 2, appId: "com.webos.app.hdmi2"),
+                Input(id: "HDMI_3", label: "HDMI 3", connected: false),
+            ]
+            state = .connected
+        }
     #endif
 
     /// A TV this phone has already been allowed into. Once paired, the remote
@@ -262,8 +264,8 @@ final class TVConnection: ObservableObject {
                 do {
                     let message = try await task.receive()
                     guard case .string(let text) = message,
-                          let data = text.data(using: .utf8),
-                          let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+                        let data = text.data(using: .utf8),
+                        let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
                     else { continue }
                     self?.handle(json)
                 } catch {
@@ -376,8 +378,8 @@ final class TVConnection: ObservableObject {
 
     private func send(_ object: [String: Any]) {
         guard let socket,
-              let data = try? JSONSerialization.data(withJSONObject: object),
-              let text = String(data: data, encoding: .utf8)
+            let data = try? JSONSerialization.data(withJSONObject: object),
+            let text = String(data: data, encoding: .utf8)
         else { return }
         socket.send(.string(text)) { _ in }
     }
@@ -408,7 +410,7 @@ final class TVConnection: ObservableObject {
 
     private func openPointer() async {
         guard let payload = try? await request("ssap://com.webos.service.networkinput/getPointerInputSocket"),
-              var path = payload["socketPath"] as? String
+            var path = payload["socketPath"] as? String
         else { return }
         if secure, path.hasPrefix("ws://") {
             path = path.replacingOccurrences(of: "ws://", with: "wss://")
@@ -448,8 +450,6 @@ final class TVConnection: ObservableObject {
         case red = "RED", green = "GREEN", yellow = "YELLOW", blue = "BLUE"
         case info = "INFO", guide = "GUIDE", captions = "CC", dash = "DASH"
     }
-
-
 
     // MARK: Everything else
 
@@ -503,13 +503,14 @@ final class TVConnection: ObservableObject {
         task.resume()
         defer { task.cancel(with: .goingAway, reason: nil) }
         guard let data = try? JSONSerialization.data(withJSONObject: WebOS.registration(key: key)),
-              let text = String(data: data, encoding: .utf8) else { return false }
+            let text = String(data: data, encoding: .utf8)
+        else { return false }
         try? await task.send(.string(text))
         return await withTaskGroup(of: Bool.self) { group in
             group.addTask {
                 while let message = try? await task.receive() {
                     guard case .string(let text) = message,
-                          let json = try? JSONSerialization.jsonObject(with: Data(text.utf8)) as? [String: Any]
+                        let json = try? JSONSerialization.jsonObject(with: Data(text.utf8)) as? [String: Any]
                     else { continue }
                     switch WebOS.registerReply(json) {
                     case .registered: return true
@@ -519,7 +520,9 @@ final class TVConnection: ObservableObject {
                 }
                 return false
             }
-            group.addTask { try? await Task.sleep(for: .seconds(4)); return false }
+            group.addTask {
+                try? await Task.sleep(for: .seconds(4)); return false
+            }
             let answer = await group.next() ?? false
             group.cancelAll()
             task.cancel(with: .goingAway, reason: nil)
@@ -565,8 +568,7 @@ final class TVConnection: ObservableObject {
 
     func loadInputs() async {
         let result: [String: Any]
-        do { result = try await request("ssap://tv/getExternalInputList") }
-        catch { dump(["error": error.localizedDescription], "inputs"); return }
+        do { result = try await request("ssap://tv/getExternalInputList") } catch { dump(["error": error.localizedDescription], "inputs"); return }
         dump(result, "inputs")
         inputs = WebOS.inputs(from: result)
     }
@@ -626,8 +628,8 @@ final class TVConnection: ObservableObject {
 /// Saves a raw TV response to the app's Documents folder, for debugging from the Mac.
 private func dump(_ object: [String: Any]?, _ name: String) {
     guard let object,
-          let data = try? JSONSerialization.data(withJSONObject: object, options: .prettyPrinted),
-          let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
+        let data = try? JSONSerialization.data(withJSONObject: object, options: .prettyPrinted),
+        let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
     else { return }
     try? data.write(to: dir.appendingPathComponent("\(name).json"))
 }
@@ -654,12 +656,15 @@ struct TVError: LocalizedError {
 /// The TV's TLS port uses a self-signed certificate. Accept it only for
 /// addresses on the local network, never for anything on the internet.
 final class LocalTrust: NSObject, URLSessionDelegate {
-    func urlSession(_ session: URLSession, didReceive challenge: URLAuthenticationChallenge,
-                    completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
+    func urlSession(
+        _ session: URLSession, didReceive challenge: URLAuthenticationChallenge,
+        completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
+    ) {
         let host = challenge.protectionSpace.host
         if challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust,
-           let trust = challenge.protectionSpace.serverTrust,
-           Self.isLocal(host) {
+            let trust = challenge.protectionSpace.serverTrust,
+            Self.isLocal(host)
+        {
             completionHandler(.useCredential, URLCredential(trust: trust))
         } else {
             completionHandler(.performDefaultHandling, nil)

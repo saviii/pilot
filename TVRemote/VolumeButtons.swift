@@ -53,7 +53,8 @@ final class VolumeButtons: ObservableObject {
 
     private func setPhoneVolume(_ value: Float) {
         guard let slider = view.subviews.compactMap({ $0 as? UISlider }).first,
-              abs(slider.value - value) > 0.001 else { return }
+            abs(slider.value - value) > 0.001
+        else { return }
         resetting = true
         slider.value = value
     }

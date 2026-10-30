@@ -22,8 +22,10 @@ public enum Finding {
     /// The router gave a paired TV a new address. Of the TVs that answered, offer our
     /// pairing only to ones we don't already know, in order, and return the first that
     /// accepts it: that's ours. Only our TV accepts our key; any other would ask to pair.
-    public static func moved(from old: String, known: Set<String>, answering: [String],
-                             accepts: (String) async -> Bool) async -> String? {
+    public static func moved(
+        from old: String, known: Set<String>, answering: [String],
+        accepts: (String) async -> Bool
+    ) async -> String? {
         for address in sorted(answering) where address != old && !known.contains(address) {
             if await accepts(address) { return address }
         }

@@ -25,10 +25,10 @@ public enum SonosSOAP {
     public static func envelope(_ service: Service, _ action: String, _ args: [(String, String)] = []) -> String {
         let fields = ([("InstanceID", "0")] + args).map { "<\($0.0)>\(escape($0.1))</\($0.0)>" }.joined()
         return """
-        <?xml version="1.0" encoding="utf-8"?><s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" \
-        s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"><s:Body><u:\(action) xmlns:u="\(service.urn)">\
-        \(fields)</u:\(action)></s:Body></s:Envelope>
-        """
+            <?xml version="1.0" encoding="utf-8"?><s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" \
+            s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"><s:Body><u:\(action) xmlns:u="\(service.urn)">\
+            \(fields)</u:\(action)></s:Body></s:Envelope>
+            """
     }
 
     /// The SOAPACTION header for one action.
@@ -39,7 +39,8 @@ public enum SonosSOAP {
     /// The text inside the first `<tag>` (attributes allowed), unescaped.
     public static func value(_ tag: String, in xml: String) -> String? {
         guard let open = xml.range(of: "<\(tag)>") ?? xml.range(of: "<\(tag) [^>]*>", options: .regularExpression),
-              let close = xml.range(of: "</\(tag)>", range: open.upperBound..<xml.endIndex) else { return nil }
+            let close = xml.range(of: "</\(tag)>", range: open.upperBound..<xml.endIndex)
+        else { return nil }
         return unescape(String(xml[open.upperBound..<close.lowerBound]))
     }
 

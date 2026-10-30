@@ -36,7 +36,8 @@ public struct Pairings {
 
     public var saved: [SavedTV] {
         guard let data = store.data(forKey: "tvs"),
-              let list = try? JSONDecoder().decode([SavedTV].self, from: data) else { return [] }
+            let list = try? JSONDecoder().decode([SavedTV].self, from: data)
+        else { return [] }
         return list
     }
 

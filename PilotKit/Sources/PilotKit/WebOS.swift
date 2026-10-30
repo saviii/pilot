@@ -105,11 +105,12 @@ public enum WebOS {
         guard let devices = payload["devices"] as? [[String: Any]] else { return [] }
         return devices.compactMap { device in
             guard let id = device["id"] as? String else { return nil }
-            return TVInput(id: id, label: device["label"] as? String ?? id,
-                           connected: device["connected"] as? Bool ?? false,
-                           port: device["port"] as? Int,
-                           signal: device["hdmiSignalExist"] as? Bool ?? false,
-                           appId: device["appId"] as? String)
+            return TVInput(
+                id: id, label: device["label"] as? String ?? id,
+                connected: device["connected"] as? Bool ?? false,
+                port: device["port"] as? Int,
+                signal: device["hdmiSignalExist"] as? Bool ?? false,
+                appId: device["appId"] as? String)
         }
     }
 

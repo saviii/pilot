@@ -132,9 +132,11 @@ private struct Controls: View {
                 .font(.system(size: 16, weight: .bold))
                 .frame(maxWidth: .infinity)
                 .frame(height: 44)
-                .background(Look.key, in: UnevenRoundedRectangle(
-                    topLeadingRadius: leading ? 22 : 8, bottomLeadingRadius: leading ? 22 : 8,
-                    bottomTrailingRadius: leading ? 8 : 22, topTrailingRadius: leading ? 8 : 22))
+                .background(
+                    Look.key,
+                    in: UnevenRoundedRectangle(
+                        topLeadingRadius: leading ? 22 : 8, bottomLeadingRadius: leading ? 22 : 8,
+                        bottomTrailingRadius: leading ? 8 : 22, topTrailingRadius: leading ? 8 : 22))
         }
         .buttonStyle(.plain)
         .foregroundStyle(Look.ink)

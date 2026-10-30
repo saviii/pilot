@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+
 @testable import PilotKit
 
 @Suite struct Neighbors {
@@ -31,24 +32,27 @@ import Testing
 
     @Test func findsOurTVAtItsNewAddress() async {
         let wifi = FakeWiFi(ours: "192.168.1.57")
-        let found = await Finding.moved(from: "192.168.1.20", known: ["192.168.1.20"],
-                                        answering: ["192.168.1.57"], accepts: { await wifi.accepts($0) })
+        let found = await Finding.moved(
+            from: "192.168.1.20", known: ["192.168.1.20"],
+            answering: ["192.168.1.57"], accepts: { await wifi.accepts($0) })
         #expect(found == "192.168.1.57")
     }
 
     @Test func neverOffersOurKeyToTVsWeKnow() async {
         // The upstairs TV is saved too: it must not be asked (it would show a pairing prompt).
         let wifi = FakeWiFi(ours: nil)
-        let found = await Finding.moved(from: "192.168.1.20", known: ["192.168.1.20", "192.168.1.31"],
-                                        answering: ["192.168.1.20", "192.168.1.31"], accepts: { await wifi.accepts($0) })
+        let found = await Finding.moved(
+            from: "192.168.1.20", known: ["192.168.1.20", "192.168.1.31"],
+            answering: ["192.168.1.20", "192.168.1.31"], accepts: { await wifi.accepts($0) })
         #expect(found == nil)
         #expect(await wifi.asked.isEmpty)
     }
 
     @Test func skipsAStrangersTV() async {
         let wifi = FakeWiFi(ours: "192.168.1.88")
-        let found = await Finding.moved(from: "192.168.1.20", known: ["192.168.1.20"],
-                                        answering: ["192.168.1.88", "192.168.1.12"], accepts: { await wifi.accepts($0) })
+        let found = await Finding.moved(
+            from: "192.168.1.20", known: ["192.168.1.20"],
+            answering: ["192.168.1.88", "192.168.1.12"], accepts: { await wifi.accepts($0) })
         #expect(found == "192.168.1.88")
         #expect(await wifi.asked == ["192.168.1.12", "192.168.1.88"])  // in address order
     }
