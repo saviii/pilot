@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 
 /// Talks to an LG webOS TV over the local network, using the same
 /// "connect apps" socket LG's own phone app uses. The TV asks once on
@@ -17,12 +18,28 @@ final class TVConnection: ObservableObject {
         let id: String
         let title: String
         let icon: URL?
+        var color: String? = nil
     }
 
     struct Input: Identifiable, Hashable {
         let id: String
         let label: String
         let connected: Bool
+        var port: Int? = nil
+        var signal = false
+    }
+
+    // MARK: Icons
+
+    /// The TV serves icons over its self-signed TLS port, so they load
+    /// through our own session (which trusts it) rather than AsyncImage.
+    private let icons = NSCache<NSURL, UIImage>()
+
+    func image(_ url: URL) async -> UIImage? {
+        if let cached = icons.object(forKey: url as NSURL) { return cached }
+        guard let (data, _) = try? await session.data(from: url), let image = UIImage(data: data) else { return nil }
+        icons.setObject(image, forKey: url as NSURL)
+        return image
     }
 
     /// The apps LG puts on its remote's shortcut keys, in that order.
@@ -139,7 +156,7 @@ final class TVConnection: ObservableObject {
                     "CONTROL_INPUT_JOYSTICK", "CONTROL_INPUT_MEDIA_PLAYBACK",
                     "CONTROL_INPUT_TEXT", "CONTROL_MOUSE_AND_KEYBOARD", "CONTROL_INPUT_TV",
                     "READ_INSTALLED_APPS", "READ_RUNNING_APPS", "READ_APP_STATUS",
-                    "READ_POWER_STATE", "READ_SETTINGS",
+                    "READ_POWER_STATE", "READ_SETTINGS", "READ_INPUT_DEVICE_LIST",
                     "WRITE_NOTIFICATION_TOAST",
                 ],
             ],
@@ -222,11 +239,14 @@ final class TVConnection: ObservableObject {
             if let level = status["volume"] as? Int { self?.volume = level }
             if let mute = (status["muteStatus"] ?? status["muted"]) as? Bool { self?.muted = mute }
         }
-        if let payload = try? await request("ssap://com.webos.applicationManager/listLaunchPoints"),
+        let launch = try? await request("ssap://com.webos.applicationManager/listLaunchPoints")
+        dump(launch, "launchpoints")
+        if let payload = launch,
            let points = payload["launchPoints"] as? [[String: Any]] {
             apps = points.compactMap { point in
                 guard let id = point["id"] as? String, let title = point["title"] as? String else { return nil }
-                return App(id: id, title: title, icon: (point["icon"] as? String).flatMap(URL.init(string:)))
+                let icon = (point["largeIcon"] as? String) ?? (point["icon"] as? String)
+                return App(id: id, title: title, icon: icon.flatMap(URL.init(string:)), color: point["iconColor"] as? String)
             }
         }
     }
@@ -324,12 +344,18 @@ final class TVConnection: ObservableObject {
     func switchInput(_ input: Input) { run("ssap://tv/switchInput", ["inputId": input.id]) }
 
     func loadInputs() async {
-        guard let payload = try? await request("ssap://tv/getExternalInputList"),
+        let result: [String: Any]
+        do { result = try await request("ssap://tv/getExternalInputList") }
+        catch { dump(["error": error.localizedDescription], "inputs"); return }
+        dump(result, "inputs")
+        guard let payload = Optional(result),
               let devices = payload["devices"] as? [[String: Any]] else { return }
         inputs = devices.compactMap { device in
             guard let id = device["id"] as? String else { return nil }
             return Input(id: id, label: device["label"] as? String ?? id,
-                         connected: device["connected"] as? Bool ?? false)
+                         connected: device["connected"] as? Bool ?? false,
+                         port: device["port"] as? Int,
+                         signal: device["hdmiSignalExist"] as? Bool ?? false)
         }
     }
     func launch(_ app: App) { run("ssap://system.launcher/launch", ["id": app.id]) }
@@ -345,6 +371,15 @@ final class TVConnection: ObservableObject {
     }
 
     func sendEnter() { run("ssap://com.webos.service.ime/sendEnterKey") }
+}
+
+/// Saves a raw TV response to the app's Documents folder, for debugging from the Mac.
+private func dump(_ object: [String: Any]?, _ name: String) {
+    guard let object,
+          let data = try? JSONSerialization.data(withJSONObject: object, options: .prettyPrinted),
+          let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
+    else { return }
+    try? data.write(to: dir.appendingPathComponent("\(name).json"))
 }
 
 struct TVError: LocalizedError {

@@ -94,7 +94,7 @@ private struct AppKeys: View {
         HStack(spacing: 8) {
             ForEach(tv.shortcuts) { app in
                 Key(shape: RoundedRectangle(cornerRadius: 14), action: { tv.launch(app) }) {
-                    AppIcon(app: app, size: 26)
+                    AppIcon(app: app, inset: 4)
                         .frame(maxWidth: .infinity)
                         .frame(height: 50)
                 }
@@ -109,23 +109,41 @@ private struct AppKeys: View {
     }
 }
 
+/// An app's tile, the way the TV draws it: its icon on its brand color.
 struct AppIcon: View {
+    @EnvironmentObject private var tv: TVConnection
     let app: TVConnection.App
-    var size: CGFloat
+    var radius: CGFloat = 14
+    var inset: CGFloat = 6
+    @State private var image: UIImage?
 
     var body: some View {
-        AsyncImage(url: app.icon) { image in
-            image.resizable().scaledToFit()
-                .frame(width: size * 1.6, height: size * 1.6)
-                .clipShape(RoundedRectangle(cornerRadius: 6))
-        } placeholder: {
-            Text(app.title)
-                .font(Theme.mono(9))
-                .lineLimit(2)
-                .multilineTextAlignment(.center)
-                .minimumScaleFactor(0.8)
-                .padding(.horizontal, 4)
-        }
+        RoundedRectangle(cornerRadius: radius)
+            .fill(Color(hex: app.color) ?? Theme.key)
+            .overlay {
+                if let image {
+                    Image(uiImage: image).resizable().scaledToFit().padding(inset)
+                } else {
+                    Text(app.title)
+                        .font(Theme.mono(9))
+                        .foregroundStyle(Theme.ink)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.center)
+                        .padding(4)
+                }
+            }
+            .clipShape(RoundedRectangle(cornerRadius: radius))
+            .task(id: app.icon) {
+                if let url = app.icon { image = await tv.image(url) }
+            }
+    }
+}
+
+extension Color {
+    /// "#FD312E" → Color. Nil for anything else.
+    init?(hex: String?) {
+        guard let hex, hex.hasPrefix("#"), hex.count == 7, let value = Int(hex.dropFirst(), radix: 16) else { return nil }
+        self.init(red: Double((value >> 16) & 0xFF) / 255, green: Double((value >> 8) & 0xFF) / 255, blue: Double(value & 0xFF) / 255)
     }
 }
 

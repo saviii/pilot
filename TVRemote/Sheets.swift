@@ -53,15 +53,22 @@ struct InputsSheet: View {
                     tv.switchInput(input)
                     dismiss()
                 }) {
-                    HStack {
-                        Text(input.label).font(.body.weight(.medium))
+                    HStack(spacing: 14) {
+                        Text(input.port.map { String($0) } ?? "")
+                            .font(Theme.dot(26))
+                            .foregroundStyle(Theme.accent)
+                            .frame(width: 24)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(input.label).font(.body.weight(.medium))
+                            Caption(input.signal ? "HDMI \(input.port ?? 0) · On" : "HDMI \(input.port ?? 0)")
+                        }
                         Spacer()
                         Circle()
-                            .fill(input.connected ? Theme.accent : Theme.hairline)
+                            .fill(input.signal ? Theme.accent : Theme.muted.opacity(0.4))
                             .frame(width: 6, height: 6)
                     }
                     .padding(.horizontal, 18)
-                    .frame(height: 56)
+                    .frame(height: 64)
                 }
             }
             if tv.inputs.isEmpty {
@@ -145,14 +152,14 @@ struct AppsSheet: View {
                                 tv.launch(app)
                                 dismiss()
                             }) {
-                                AppIcon(app: app, size: 30)
-                                    .frame(maxWidth: .infinity)
-                                    .aspectRatio(1, contentMode: .fit)
+                                AppIcon(app: app, radius: 18, inset: 8)
+                                    .frame(width: 72, height: 72)
                             }
                             Text(app.title)
-                                .font(.caption2)
-                                .foregroundStyle(Theme.muted)
+                                .font(.caption)
+                                .foregroundStyle(Theme.ink.opacity(0.8))
                                 .lineLimit(1)
+                                .frame(maxWidth: 80)
                         }
                     }
                 }
