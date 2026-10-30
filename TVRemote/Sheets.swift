@@ -221,17 +221,24 @@ struct InputsSheet: View {
     }
 }
 
-/// Edit the top strip: reorder or remove what's on it, add anything else.
+/// Edit the top strip, in the strip's own language: tiles. What's on top is
+/// numbered in order; hold and drag a tile onto another to move it. Tap any tile
+/// to move it between the two sections; its badge says which way it'll go.
 struct AppsSheet: View {
     @EnvironmentObject private var tv: TVConnection
     @Environment(\.dismiss) private var dismiss
+    @Namespace private var tiles
+    @State private var query = ""
+    @State private var target: String?
     private let pins = Pins()
 
     private var pinned: [TVConnection.App] {
         pins.ids.compactMap { id in tv.apps.first { $0.id == id } }
     }
     private var others: [TVConnection.App] {
-        tv.apps.filter { !pins.contains($0.id) }
+        let rest = tv.apps.filter { !pins.contains($0.id) }
+        let q = query.trimmingCharacters(in: .whitespaces)
+        return q.isEmpty ? rest : rest.filter { $0.title.localizedCaseInsensitiveContains(q) }
     }
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 12), count: 4)
 
@@ -246,65 +253,119 @@ struct AppsSheet: View {
             }
             .padding(.horizontal, 24)
             .padding(.top, 24)
-            .padding(.bottom, 8)
+            .padding(.bottom, 12)
 
-            List {
-                Section {
-                    ForEach(pinned) { app in
-                        HStack(spacing: 14) {
-                            AppIcon(app: app, radius: 9, inset: 3).frame(width: 52, height: 36)
-                            Text(app.title).font(.body.weight(.medium))
-                        }
-                        .listRowBackground(Theme.key)
-                    }
-                    .onMove { source, destination in
-                        pins.move(visible: pinned.map(\.id), from: source, to: destination)
-                    }
-                    .onDelete { offsets in
-                        offsets.map { pinned[$0].id }.forEach(pins.remove)
-                    }
-                    if pinned.isEmpty {
-                        Text("Nothing on top yet. Add apps below.")
-                            .foregroundStyle(Theme.muted)
-                            .listRowBackground(Theme.key)
-                    }
-                } header: {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
                     Caption("On top")
-                }
-
-                if !others.isEmpty {
-                    Section {
-                        LazyVGrid(columns: columns, spacing: 16) {
-                            ForEach(others) { app in
-                                Button {
-                                    haptic()
-                                    withAnimation(.easeInOut(duration: 0.25)) { pins.toggle(app.id) }
-                                } label: {
-                                    VStack(spacing: 8) {
+                    if pinned.isEmpty {
+                        RoundedRectangle(cornerRadius: 18)
+                            .stroke(Theme.muted.opacity(0.5), style: StrokeStyle(lineWidth: 1.5, lineCap: .round, dash: [0.1, 6]))
+                            .frame(height: 96)
+                            .overlay(Text("Tap apps below to put them here").font(.subheadline).foregroundStyle(Theme.muted))
+                    } else {
+                        LazyVGrid(columns: columns, spacing: 18) {
+                            ForEach(Array(pinned.enumerated()), id: \.element.id) { index, app in
+                                tile(app, number: index + 1, badge: "minus", tint: Theme.ink) { toggle(app) }
+                                    .draggable(app.id) {
                                         AppIcon(app: app, radius: 16, inset: 7).frame(width: 64, height: 64)
-                                        Text(app.title)
-                                            .font(.caption)
-                                            .foregroundStyle(Theme.ink.opacity(0.8))
-                                            .lineLimit(1)
-                                            .frame(maxWidth: 76)
+                                            .environmentObject(tv)
                                     }
-                                }
-                                .buttonStyle(Pressable())
+                                    .dropDestination(for: String.self) { items, _ in
+                                        guard let id = items.first else { return false }
+                                        haptic(.medium)
+                                        withAnimation(.easeInOut(duration: 0.25)) {
+                                            pins.place(id, at: app.id, visible: pinned.map(\.id))
+                                        }
+                                        return true
+                                    } isTargeted: { over in
+                                        target = over ? app.id : (target == app.id ? nil : target)
+                                    }
                             }
                         }
-                        .padding(.vertical, 8)
-                        .listRowInsets(EdgeInsets())
-                        .listRowBackground(Color.clear)
-                    } header: {
-                        Caption("Add apps")
+                    }
+
+                    Caption("Add apps").padding(.top, 14)
+                    HStack(spacing: 10) {
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(Theme.muted)
+                        TextField("Find an app", text: $query)
+                            .tint(Theme.accent)
+                            .autocorrectionDisabled()
+                            .textInputAutocapitalization(.never)
+                        if !query.isEmpty {
+                            Button { query = "" } label: {
+                                Image(systemName: "xmark.circle.fill").foregroundStyle(Theme.muted)
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 14)
+                    .frame(height: 44)
+                    .background(Theme.key, in: RoundedRectangle(cornerRadius: 12))
+                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.hairline))
+
+                    LazyVGrid(columns: columns, spacing: 18) {
+                        ForEach(others) { app in
+                            tile(app, number: nil, badge: "plus", tint: Theme.accent) { toggle(app) }
+                        }
+                    }
+                    if others.isEmpty {
+                        Text(query.isEmpty ? "Everything's on top." : "No app called \u{201C}\(query)\u{201D}.")
+                            .font(.subheadline)
+                            .foregroundStyle(Theme.muted)
                     }
                 }
+                .padding(.horizontal, 24)
+                .padding(.bottom, 32)
             }
-            .environment(\.editMode, .constant(.active))
-            .scrollContentBackground(.hidden)
-            .tint(Theme.accent)
+            .scrollDismissesKeyboard(.immediately)
         }
         .foregroundStyle(Theme.ink)
+    }
+
+    /// One app: its tile, a badge for what a tap does, and its name (numbered when on top).
+    private func tile(_ app: TVConnection.App, number: Int?, badge: String, tint: Color, _ action: @escaping () -> Void) -> some View {
+        Button {
+            haptic()
+            action()
+        } label: {
+            VStack(spacing: 8) {
+                AppIcon(app: app, radius: 16, inset: 7)
+                    .frame(width: 64, height: 64)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(Theme.accent, lineWidth: 2)
+                            .opacity(target == app.id ? 1 : 0)
+                    )
+                    .overlay(alignment: .topTrailing) {
+                        Image(systemName: badge)
+                            .font(.system(size: 10, weight: .heavy))
+                            .foregroundStyle(tint == Theme.accent ? Theme.background : Theme.ink)
+                            .frame(width: 22, height: 22)
+                            .background(tint == Theme.accent ? Theme.accent : Theme.key, in: Circle())
+                            .overlay(Circle().stroke(Theme.background, lineWidth: 2))
+                            .offset(x: 7, y: -7)
+                    }
+                    .matchedGeometryEffect(id: app.id, in: tiles)
+                HStack(spacing: 4) {
+                    if let number {
+                        Text("\(number)").font(Theme.dot(13)).foregroundStyle(Theme.accent)
+                    }
+                    Text(app.title)
+                        .font(.caption)
+                        .foregroundStyle(Theme.ink.opacity(0.85))
+                        .lineLimit(1)
+                }
+                .frame(maxWidth: 80)
+            }
+        }
+        .buttonStyle(Pressable())
+        .animation(.easeOut(duration: 0.15), value: target)
+    }
+
+    private func toggle(_ app: TVConnection.App) {
+        withAnimation(.easeInOut(duration: 0.25)) { pins.toggle(app.id) }
     }
 }
 

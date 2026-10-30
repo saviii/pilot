@@ -170,6 +170,12 @@ struct Pins: DynamicProperty {
 
     func remove(_ id: String) { ids.removeAll { $0 == id } }
 
+    /// Drag and drop: puts `id` where `target` is, among the visible pins.
+    func place(_ id: String, at target: String, visible: [String]) {
+        guard id != target, let from = visible.firstIndex(of: id), let to = visible.firstIndex(of: target) else { return }
+        move(visible: visible, from: IndexSet(integer: from), to: to > from ? to + 1 : to)
+    }
+
     func seedIfNeeded(with apps: [TVConnection.App]) {
         guard !seeded, !apps.isEmpty else { return }
         ids = apps.map(\.id)
