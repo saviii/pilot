@@ -554,8 +554,6 @@ struct ScreenshotSheet: View {
             .aspectRatio(16 / 9, contentMode: .fit)
             .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.hairline))
 
-            Caption("Netflix and other protected video come out black")
-
             HStack(spacing: 10) {
                 Button {
                     guard let image else { return }

@@ -74,7 +74,7 @@ struct RemoteView: View {
                 case .keyboard: KeyboardSheet().presentationDetents([.height(tv.foregroundInput == nil ? 220 : 330)])
                 case .inputs: InputsSheet().presentationDetents([.medium, .large])
                 case .apps: AppsSheet().presentationDetents([.large])
-                case .screenshot: ScreenshotSheet().presentationDetents([.height(430)])
+                case .screenshot: ScreenshotSheet().presentationDetents([.height(400)])
                 case .tvs: TVsSheet().presentationDetents([.height(CGFloat(170 + tv.saved.count * 100))])
                 }
             }
