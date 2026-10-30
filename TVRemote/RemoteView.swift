@@ -23,7 +23,10 @@ struct RemoteView: View {
 
             Spacer(minLength: 16)
             HStack {
-                IconKey(symbol: "arrow.uturn.backward", longPress: { tv.press(.exit) }) { tv.press(.back) }
+                // Hold Back to leave the app, like LG's remote. Not on an HDMI input:
+                // there EXIT leaves the console for the TV's input picker.
+                IconKey(symbol: "arrow.uturn.backward",
+                        longPress: tv.foregroundInput == nil ? { tv.press(.exit) } : nil) { tv.press(.back) }
                 Spacer()
                 IconKey(symbol: "house.fill") { tv.press(.home) }
                 Spacer()

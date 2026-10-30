@@ -439,12 +439,6 @@ final class TVConnection: ObservableObject {
         sendPointer("type:button\nname:\(button.rawValue)")
     }
 
-    /// TEMPORARY: send any key name, to find which one the PS5 takes as its home button.
-    func pressRaw(_ name: String) {
-        log("\(foreground ?? "?") key \(name)", "keys")
-        sendPointer("type:button\nname:\(name)")
-    }
-
     func move(dx: Double, dy: Double) {
         sendPointer("type:move\ndx:\(Int(dx.rounded()))\ndy:\(Int(dy.rounded()))\ndown:0")
     }
