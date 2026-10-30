@@ -326,13 +326,15 @@ final class TVConnection: ObservableObject {
         retryIfPaired()
     }
 
-    /// Paired TVs get a few quiet retries (1s, 2s, 4s, 8s) before we stop and wait
-    /// for the app to come back to the front.
+    /// Paired TVs get quick quiet retries (1s, 2s, 4s, 8s), then one every 5s for as long
+    /// as Pilot is open: a TV that's just been turned on can take a minute to join the
+    /// Wi-Fi, and stopping early left it looking off while it was on. Leaving the app
+    /// (suspend) stops the retries. Every so often we also look for it at a new address.
     private func retryIfPaired() {
         unreachable = true
-        guard isPaired, retries < 4 else { return }
-        if retries == 0, !waking { Task { await relocate() } }
-        let delay = 1 << retries
+        guard isPaired else { return }
+        if retries % 12 == 0, !waking { Task { await relocate() } }
+        let delay = retries < 4 ? 1 << retries : 5
         retries += 1
         Task { [weak self] in
             try? await Task.sleep(for: .seconds(delay))
