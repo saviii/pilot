@@ -167,3 +167,154 @@ struct AppsSheet: View {
         .foregroundStyle(Theme.ink)
     }
 }
+
+/// Your TVs: switch, rename or forget the current one, add another.
+struct TVsSheet: View {
+    @EnvironmentObject private var tv: TVConnection
+    @Environment(\.dismiss) private var dismiss
+    @State private var editing = false
+    @State private var name = ""
+    @State private var confirmForget = false
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Your TVs").font(.headline)
+                Spacer()
+                Button("Done") { dismiss() }
+                    .font(Theme.mono(12))
+                    .foregroundStyle(Theme.accent)
+            }
+            .padding(.bottom, 8)
+
+            ForEach(tv.saved) { saved in
+                if saved.host == tv.host { current(saved) } else { other(saved) }
+            }
+
+            Button {
+                haptic()
+                dismiss()
+                tv.startAdding()
+            } label: {
+                HStack(spacing: 14) {
+                    Image(systemName: "plus")
+                        .font(.system(size: 16, weight: .semibold))
+                        .frame(width: 40, height: 40)
+                    Text("Add a TV").font(.body.weight(.medium))
+                    Spacer()
+                }
+                .padding(.horizontal, 14)
+                .frame(height: 68)
+                .foregroundStyle(Theme.muted)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18)
+                        .stroke(Theme.muted.opacity(0.5), style: StrokeStyle(lineWidth: 1.5, lineCap: .round, dash: [0.1, 6]))
+                )
+                .contentShape(RoundedRectangle(cornerRadius: 18))
+            }
+            .buttonStyle(Pressable())
+
+            Spacer(minLength: 0)
+        }
+        .padding(24)
+        .foregroundStyle(Theme.ink)
+        .confirmationDialog("Forget \(tv.current?.name ?? "this TV")?", isPresented: $confirmForget, titleVisibility: .visible) {
+            Button("Forget", role: .destructive) {
+                tv.forget()
+                dismiss()
+            }
+        } message: {
+            Text("You'll need to press OK on the TV again to pair it.")
+        }
+    }
+
+    // MARK: Cards
+
+    private func current(_ saved: TVConnection.SavedTV) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 14) {
+                glyph(active: true)
+                VStack(alignment: .leading, spacing: 4) {
+                    if editing {
+                        TextField("Name", text: $name)
+                            .font(.title3.weight(.semibold))
+                            .tint(Theme.accent)
+                            .focused($focused)
+                            .submitLabel(.done)
+                            .onSubmit(save)
+                    } else {
+                        Text(saved.name).font(.title3.weight(.semibold))
+                    }
+                    Caption(status)
+                }
+                Spacer()
+                Circle().fill(tv.state == .connected ? Theme.accent : Theme.muted).frame(width: 6, height: 6)
+            }
+
+            HStack(spacing: 20) {
+                if editing {
+                    action("Save", Theme.accent, save)
+                    action("Cancel", Theme.muted) { editing = false }
+                } else {
+                    action("Rename", Theme.ink) {
+                        name = saved.name
+                        editing = true
+                        focused = true
+                    }
+                    action("Forget", Theme.muted) { confirmForget = true }
+                }
+            }
+            .padding(.leading, 54)
+        }
+        .padding(14)
+        .background(Theme.key, in: RoundedRectangle(cornerRadius: 18))
+        .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.accent.opacity(0.5), lineWidth: 1))
+        .animation(.easeOut(duration: 0.15), value: editing)
+    }
+
+    private func other(_ saved: TVConnection.SavedTV) -> some View {
+        Key(shape: RoundedRectangle(cornerRadius: 18), action: {
+            tv.connect(to: saved.host)
+            dismiss()
+        }) {
+            HStack(spacing: 14) {
+                glyph(active: false)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(saved.name).font(.title3.weight(.semibold))
+                    Caption(saved.host)
+                }
+                Spacer()
+                Caption("Switch")
+            }
+            .padding(14)
+        }
+    }
+
+    private func glyph(active: Bool) -> some View {
+        Image(systemName: "tv")
+            .font(.system(size: 17, weight: .medium))
+            .foregroundStyle(active ? Theme.accent : Theme.muted)
+            .frame(width: 40, height: 40)
+            .background(Theme.background, in: RoundedRectangle(cornerRadius: 12))
+    }
+
+    private func action(_ title: String, _ color: Color, _ run: @escaping () -> Void) -> some View {
+        Button(title.uppercased(), action: run)
+            .font(Theme.mono(11))
+            .tracking(1)
+            .foregroundStyle(color)
+            .frame(height: 28)
+    }
+
+    private var status: String {
+        guard tv.state == .connected else { return "Reconnecting · \(tv.host ?? "")" }
+        if let app = tv.foregroundApp { return "Connected · \(app.title)" }
+        return "Connected · \(tv.host ?? "")"
+    }
+
+    private func save() {
+        tv.rename(to: name)
+        editing = false
+    }
+}

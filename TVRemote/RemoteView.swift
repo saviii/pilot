@@ -42,7 +42,10 @@ struct RemoteView: View {
         .padding(.bottom, 8)
         .background(Theme.background.ignoresSafeArea())
         #if DEBUG
-        .onAppear { if CommandLine.arguments.contains("-apps") { sheet = .apps } }
+        .onAppear {
+            if CommandLine.arguments.contains("-apps") { sheet = .apps }
+            if CommandLine.arguments.contains("-tvs") { sheet = .tvs }
+        }
         #endif
         .sheet(item: $sheet) { kind in
             Group {
@@ -50,6 +53,7 @@ struct RemoteView: View {
                 case .keyboard: KeyboardSheet().presentationDetents([.height(170)])
                 case .inputs: InputsSheet().presentationDetents([.medium])
                 case .apps: AppsSheet().presentationDetents([.large])
+                case .tvs: TVsSheet().presentationDetents([.height(CGFloat(170 + tv.saved.count * 100))])
                 }
             }
             .presentationBackground(Theme.background)
@@ -60,7 +64,7 @@ struct RemoteView: View {
 }
 
 enum Sheet: String, Identifiable {
-    case keyboard, inputs, apps
+    case keyboard, inputs, apps, tvs
     var id: String { rawValue }
 }
 
@@ -70,62 +74,44 @@ private struct TopBar: View {
     @EnvironmentObject private var tv: TVConnection
     @Binding var sheet: Sheet?
     @AppStorage("appearance") private var appearance: Appearance = .system
-    @State private var renaming = false
-    @State private var name = ""
 
     var body: some View {
-        HStack(spacing: 12) {
-            Menu {
-                Section {
-                    ForEach(tv.saved) { saved in
-                        Button {
-                            if saved.host != tv.host { tv.connect(to: saved.host) }
-                        } label: {
-                            if saved.host == tv.host {
-                                Label(saved.name, systemImage: "checkmark")
-                            } else {
-                                Text(saved.name)
-                            }
-                        }
-                    }
-                }
-                Button("Add a TV", systemImage: "plus") { tv.startAdding() }
-                Section {
-                    Button("Rename this TV", systemImage: "pencil") {
-                        name = tv.current?.name ?? ""
-                        renaming = true
-                    }
-                    Button("Forget this TV", systemImage: "trash", role: .destructive) { tv.forget() }
-                }
+        HStack(spacing: 8) {
+            Button {
+                haptic()
+                sheet = .tvs
             } label: {
                 HStack(spacing: 8) {
                     if tv.state == .connected, let app = tv.foregroundApp {
                         // What's on the TV, in its own colors.
                         AppIcon(app: app, radius: 5, inset: 1).frame(width: 22, height: 22)
-                        Caption(app.title)
                     } else {
                         // Orange when connected; faint while it reconnects.
                         Circle()
                             .fill(tv.state == .connected ? Theme.accent : Theme.muted)
                             .frame(width: 6, height: 6)
-                        Caption(tv.current?.name ?? "LG · \(tv.host ?? "")")
                     }
+                    Caption(tv.current?.name ?? "LG · \(tv.host ?? "")")
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(Theme.muted)
                 }
                 .frame(height: 44)
                 .animation(.easeOut(duration: 0.2), value: tv.foreground)
                 .animation(.easeOut(duration: 0.2), value: tv.state == .connected)
+                .contentShape(Rectangle())
             }
-            Spacer()
+            .buttonStyle(Pressable())
+            .layoutPriority(1)
+            Spacer(minLength: 4)
             AppearanceKey(appearance: $appearance)
             IconKey(symbol: "cable.connector", size: 44) { sheet = .inputs }
             IconKey(symbol: "gearshape.fill", size: 44) { tv.press(.settings) }
             PowerKey()
         }
-        .alert("Rename this TV", isPresented: $renaming) {
-            TextField("Living room", text: $name)
-            Button("Save") { tv.rename(to: name) }
-            Button("Cancel", role: .cancel) {}
-        }
+
     }
 }
 
@@ -234,8 +220,14 @@ struct AppIcon: View {
                     Image(uiImage: image).resizable().scaledToFit().padding(inset)
                 } else {
                     // The name if it fits on a line, otherwise its first letter.
+                    // The name on one line, else two, else its first letter.
                     ViewThatFits {
                         Text(app.title).lineLimit(1).fixedSize()
+                        VStack(spacing: 1) {
+                            ForEach(app.title.split(separator: " ").map(String.init), id: \.self) { word in
+                                Text(word).lineLimit(1).fixedSize()
+                            }
+                        }
                         Text(app.title.prefix(1))
                     }
                     .font(Theme.mono(9))

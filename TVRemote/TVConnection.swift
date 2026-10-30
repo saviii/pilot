@@ -148,6 +148,7 @@ final class TVConnection: ObservableObject {
         host = "192.168.1.20"
         volume = 14
         foreground = "Netflix"
+        saved = [SavedTV(host: "192.168.1.20", name: "Living room"), SavedTV(host: "192.168.1.31", name: "Upstairs")]
         apps = ["Netflix", "Prime Video", "Disney+", "YouTube", "Apple TV", "Spotify", "LG Channels", "Twitch"]
             .map { App(id: $0, title: $0, icon: nil) }
         inputs = [Input(id: "HDMI_1", label: "HDMI 1", connected: true),
