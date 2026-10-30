@@ -392,7 +392,12 @@ struct TVsSheet: View {
             .padding(.bottom, 8)
 
             ForEach(tv.saved) { saved in
-                if saved.host == tv.host { current(saved) } else { other(saved) }
+                if saved.host == tv.host {
+                    current(saved)
+                    inputs
+                } else {
+                    other(saved)
+                }
             }
 
             Button {
@@ -506,6 +511,39 @@ struct TVsSheet: View {
         .background(Theme.key, in: RoundedRectangle(cornerRadius: 22))
         .overlay(RoundedRectangle(cornerRadius: 22).stroke(Theme.accent.opacity(0.55), lineWidth: 1))
         .animation(.easeOut(duration: 0.15), value: editing)
+    }
+
+    /// This TV's HDMI inputs: tap one to switch to it.
+    @ViewBuilder
+    private var inputs: some View {
+        if !tv.inputs.isEmpty {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(tv.inputs) { input in
+                        let on = tv.foreground == input.appId
+                        Button {
+                            haptic()
+                            tv.switchInput(input)
+                            dismiss()
+                        } label: {
+                            HStack(spacing: 10) {
+                                Text(input.port.map(String.init) ?? "").font(Theme.dot(18)).foregroundStyle(on ? Theme.background : Theme.accent)
+                                Text(input.label).font(.subheadline.weight(.medium)).lineLimit(1)
+                            }
+                            .padding(.horizontal, 16)
+                            .frame(height: 48)
+                            .foregroundStyle(on ? Theme.background : Theme.ink)
+                            .background(on ? Theme.accent : Theme.key, in: Capsule())
+                            .overlay(Capsule().stroke(Theme.hairline))
+                        }
+                        .buttonStyle(Pressable())
+                    }
+                }
+                .padding(.vertical, 2)
+            }
+            .contentMargins(.horizontal, 24, for: .scrollContent)
+            .padding(.horizontal, -24)
+        }
     }
 
     private func chip<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
@@ -990,5 +1028,195 @@ final class AirPlayPicker {
             return routes
         }
         func updateUIView(_ view: AVRoutePickerView, context: Context) {}
+    }
+}
+
+/// Remote settings: how it looks, and the six apps at the bottom of the remote.
+struct RemoteSettingsSheet: View {
+    @EnvironmentObject private var tv: TVConnection
+    @Environment(\.dismiss) private var dismiss
+    @AppStorage("appearance") private var appearance: Appearance = .system
+    @State private var query = ""
+    @State private var target: String?
+    private let pins = Pins()
+
+    private var six: [TVConnection.App] {
+        Array(pins.ids.compactMap { id in tv.apps.first { $0.id == id } }.prefix(6))
+    }
+    private var full: Bool { six.count >= 6 }
+    private var listed: [TVConnection.App] {
+        let q = query.trimmingCharacters(in: .whitespaces)
+        return q.isEmpty ? tv.apps : tv.apps.filter { $0.title.localizedCaseInsensitiveContains(q) }
+    }
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: 10), count: 3)
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                HStack {
+                    Text("Remote").font(.title2.weight(.bold))
+                    Spacer()
+                    Button("Done") { dismiss() }
+                        .font(Theme.mono(12))
+                        .foregroundStyle(Theme.accent)
+                }
+
+                Caption("Appearance")
+                HStack(spacing: 4) {
+                    ForEach(Appearance.allCases) { option in
+                        let on = appearance == option
+                        Button {
+                            haptic()
+                            appearance = option
+                        } label: {
+                            Label(option.title, systemImage: option.symbol)
+                                .font(.subheadline.weight(on ? .semibold : .medium))
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 42)
+                                .foregroundStyle(on ? Theme.background : Theme.ink)
+                                .background(on ? Theme.accent : .clear, in: RoundedRectangle(cornerRadius: 12))
+                                .contentShape(RoundedRectangle(cornerRadius: 12))
+                        }
+                        .buttonStyle(Pressable())
+                        .accessibilityAddTraits(on ? .isSelected : [])
+                    }
+                }
+                .padding(4)
+                .background(Theme.key, in: RoundedRectangle(cornerRadius: 16))
+                .animation(.easeOut(duration: 0.15), value: appearance)
+
+                Caption("Your six").padding(.top, 6)
+                LazyVGrid(columns: columns, spacing: 10) {
+                    ForEach(0..<6, id: \.self) { index in slot(index) }
+                }
+                Text("Hold a slot to move it. Tap one to clear it.")
+                    .font(.caption)
+                    .foregroundStyle(Theme.muted)
+                    .frame(maxWidth: .infinity)
+
+                HStack(spacing: 10) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(Theme.muted)
+                    TextField("Find an app", text: $query)
+                        .tint(Theme.accent)
+                        .autocorrectionDisabled()
+                        .textInputAutocapitalization(.never)
+                    if !query.isEmpty {
+                        Button { query = "" } label: {
+                            Image(systemName: "xmark.circle.fill").foregroundStyle(Theme.muted)
+                        }
+                    }
+                }
+                .padding(.horizontal, 14)
+                .frame(height: 46)
+                .background(Theme.key, in: RoundedRectangle(cornerRadius: 14))
+                .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.hairline))
+                .padding(.top, 4)
+
+                VStack(spacing: 0) {
+                    ForEach(Array(listed.enumerated()), id: \.element.id) { index, app in
+                        row(app)
+                        if index < listed.count - 1 {
+                            Rectangle().fill(Theme.hairline).frame(height: 1).padding(.leading, 60)
+                        }
+                    }
+                }
+                .background(Theme.key, in: RoundedRectangle(cornerRadius: 20))
+                .overlay(RoundedRectangle(cornerRadius: 20).stroke(Theme.hairline))
+            }
+            .padding(24)
+        }
+        .scrollDismissesKeyboard(.immediately)
+        .foregroundStyle(Theme.ink)
+    }
+
+    // MARK: Slots
+
+    @ViewBuilder
+    private func slot(_ index: Int) -> some View {
+        if index < six.count {
+            let app = six[index]
+            Button {
+                haptic()
+                withAnimation(.easeInOut(duration: 0.2)) { pins.remove(app.id) }
+            } label: {
+                AppIcon(app: app, radius: 25, inset: 6)
+                    .frame(height: 50)
+                    .overlay(alignment: .topLeading) {
+                        // Its place on the remote, as a badge on the corner.
+                        Text("\(index + 1)")
+                            .font(Theme.dot(11))
+                            .foregroundStyle(Theme.accent)
+                            .frame(width: 20, height: 20)
+                            .background(Theme.background, in: Circle())
+                            .overlay(Circle().stroke(Theme.hairline))
+                            .offset(x: -4, y: -6)
+                    }
+                    .overlay(Capsule().stroke(Theme.accent, lineWidth: 2).opacity(target == app.id ? 1 : 0))
+            }
+            .buttonStyle(Pressable())
+            .accessibilityLabel("\(index + 1), \(app.title). Tap to clear")
+            .draggable(app.id) {
+                AppIcon(app: app, radius: 25, inset: 6).frame(width: 100, height: 50).environmentObject(tv)
+            }
+            .dropDestination(for: String.self) { items, _ in
+                guard let id = items.first else { return false }
+                haptic(.medium)
+                withAnimation(.easeInOut(duration: 0.25)) { pins.place(id, at: app.id, visible: six.map(\.id)) }
+                return true
+            } isTargeted: { over in
+                target = over ? app.id : (target == app.id ? nil : target)
+            }
+        } else {
+            let next = index == six.count
+            Capsule()
+                .strokeBorder(next ? Theme.accent : Theme.muted.opacity(0.4),
+                              style: StrokeStyle(lineWidth: next ? 2 : 1.5, lineCap: .round, dash: next ? [6, 5] : [0.1, 6]))
+                .background(next ? Theme.accent.opacity(0.06) : .clear, in: Capsule())
+                .frame(height: 50)
+                .overlay {
+                    HStack(spacing: 6) {
+                        Text("\(index + 1)").font(Theme.dot(13))
+                        if next { Caption("Next").foregroundStyle(Theme.accent) }
+                    }
+                    .foregroundStyle(next ? Theme.accent : Theme.muted)
+                }
+        }
+    }
+
+    // MARK: Every app
+
+    private func row(_ app: TVConnection.App) -> some View {
+        let slot = six.firstIndex { $0.id == app.id }
+        return HStack(spacing: 14) {
+            AppIcon(app: app, radius: 9, inset: 3).frame(width: 32, height: 32)
+            Text(app.title).font(.body.weight(.medium)).lineLimit(1)
+            Spacer()
+            if let slot {
+                Text("\(slot + 1)")
+                    .font(Theme.dot(14))
+                    .foregroundStyle(Theme.accent)
+                    .frame(width: 32, height: 32)
+                    .overlay(Circle().stroke(Theme.muted.opacity(0.4), lineWidth: 1.5))
+            } else {
+                Button {
+                    haptic()
+                    withAnimation(.easeInOut(duration: 0.2)) { pins.toggle(app.id) }
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.system(size: 12, weight: .heavy))
+                        .foregroundStyle(Theme.background)
+                        .frame(width: 32, height: 32)
+                        .background(Theme.accent, in: Circle())
+                }
+                .buttonStyle(Pressable())
+                .disabled(full)
+                .opacity(full ? 0.3 : 1)
+                .accessibilityLabel("Add \(app.title)")
+            }
+        }
+        .padding(.horizontal, 14)
+        .frame(height: 56)
     }
 }
