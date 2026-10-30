@@ -160,6 +160,16 @@ struct Pins: DynamicProperty {
         if contains(id) { ids.removeAll { $0 == id } } else { ids.append(id) }
     }
 
+    /// Reorders the visible pins (installed apps). Pins for apps that aren't
+    /// on the TV right now keep their place at the end.
+    func move(visible: [String], from source: IndexSet, to destination: Int) {
+        var order = visible
+        order.move(fromOffsets: source, toOffset: destination)
+        ids = order + ids.filter { !visible.contains($0) }
+    }
+
+    func remove(_ id: String) { ids.removeAll { $0 == id } }
+
     func seedIfNeeded(with apps: [TVConnection.App]) {
         guard !seeded, !apps.isEmpty else { return }
         ids = apps.map(\.id)

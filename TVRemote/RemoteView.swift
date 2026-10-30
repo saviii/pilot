@@ -49,7 +49,7 @@ struct RemoteView: View {
                 switch kind {
                 case .keyboard: KeyboardSheet().presentationDetents([.height(170)])
                 case .inputs: InputsSheet().presentationDetents([.medium])
-                case .apps: AppsSheet().presentationDetents([.medium, .large])
+                case .apps: AppsSheet().presentationDetents([.large])
                 }
             }
             .presentationBackground(Theme.background)
@@ -146,11 +146,21 @@ private struct AppKeys: View {
                                 AppIcon(app: app, inset: 4).frame(width: tile, height: 50)
                             }
                             .buttonStyle(KeyStyle(shape: RoundedRectangle(cornerRadius: 14)))
+                            // The app on the TV right now.
+                            .overlay(alignment: .bottom) {
+                                Circle()
+                                    .fill(Theme.accent)
+                                    .frame(width: 4, height: 4)
+                                    .offset(y: 8)
+                                    .opacity(tv.foreground == app.id ? 1 : 0)
+                                    .animation(.easeOut(duration: 0.2), value: tv.foreground)
+                            }
                         }
                         add(width: pinned.isEmpty ? geo.size.width : tile)
                             .id("add")
                     }
-                    .padding(.vertical, 3)
+                    .padding(.top, 3)
+                    .padding(.bottom, 10)
                 }
                 // Scroll edge to edge, but line the tiles up with the page margin.
                 .contentMargins(.horizontal, 24, for: .scrollContent)
@@ -161,7 +171,7 @@ private struct AppKeys: View {
                 }
             }
         }
-        .frame(height: 56)
+        .frame(height: 63)
         .onAppear { pins.seedIfNeeded(with: tv.shortcuts) }
         .onChange(of: tv.apps) { pins.seedIfNeeded(with: tv.shortcuts) }
     }
@@ -196,12 +206,14 @@ struct AppIcon: View {
                 if let image {
                     Image(uiImage: image).resizable().scaledToFit().padding(inset)
                 } else {
-                    Text(app.title)
-                        .font(Theme.mono(9))
-                        .foregroundStyle(Theme.ink)
-                        .lineLimit(2)
-                        .multilineTextAlignment(.center)
-                        .padding(4)
+                    // The name if it fits on a line, otherwise its first letter.
+                    ViewThatFits {
+                        Text(app.title).lineLimit(1).fixedSize()
+                        Text(app.title.prefix(1))
+                    }
+                    .font(Theme.mono(9))
+                    .foregroundStyle(Theme.ink)
+                    .padding(4)
                 }
             }
             .clipShape(RoundedRectangle(cornerRadius: radius))
