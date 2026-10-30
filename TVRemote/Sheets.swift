@@ -214,9 +214,6 @@ struct InputsSheet: View {
             if tv.inputs.isEmpty {
                 Text("No inputs found.").foregroundStyle(Theme.muted)
             }
-
-                }
-            }
             Spacer()
         }
         .padding(24)
