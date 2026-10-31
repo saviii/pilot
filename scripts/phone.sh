@@ -22,5 +22,8 @@ text = sys.stdin.read()
 print(json.loads(text[text.index("{"):])["result"]["hardwareProperties"]["udid"])')" \
   -allowProvisioningUpdates build
 xcrun devicectl device install app --device "$phone" "$derived/Build/Products/Debug-iphoneos/TVRemote.app" >/dev/null
-xcrun devicectl device process launch --terminate-existing --device "$phone" fyi.savi.tvremote >/dev/null
-echo "✓ Pilot is on the phone"
+if xcrun devicectl device process launch --terminate-existing --device "$phone" fyi.savi.tvremote >/dev/null 2>&1; then
+  echo "✓ Pilot is on the phone and open"
+else
+  echo "✓ Pilot is on the phone (couldn't open it: the phone is probably locked)"
+fi
