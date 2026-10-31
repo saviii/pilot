@@ -8,7 +8,7 @@ struct RemoteView: View {
     @EnvironmentObject private var tv: TVConnection
     @StateObject private var pointer = AirPointer()
     @StateObject private var buttons = VolumeButtons()
-    @StateObject private var sonos = Sonos()
+    @ObservedObject private var sonos = Sonos.shared
     @Environment(\.scenePhase) private var scenePhase
     @State private var sheet: Sheet?
     @AppStorage("appearance") private var appearance: Appearance = .system

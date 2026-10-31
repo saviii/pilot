@@ -11,7 +11,8 @@ enum LiveRemote {
     private static func state(_ tv: TVConnection) -> PilotActivityAttributes.ContentState {
         .init(
             tv: tv.current?.name ?? "TV", app: tv.foregroundApp?.title ?? tv.foregroundInput?.label,
-            appColor: tv.foregroundApp?.color, volume: tv.volume, muted: tv.muted)
+            appColor: tv.foregroundApp?.color,
+            volume: Loudness.level(tv, .shared), muted: Loudness.muted(tv, .shared))
     }
 
     /// You left Pilot while connected: put the panel up.
@@ -37,8 +38,20 @@ enum LiveRemote {
     }
 
     /// A panel button: reconnect if iOS froze us, send it, then refresh the panel.
+    /// Volume goes wherever the remote's does (the Sonos, when it's playing the TV).
     static func run(_ action: TVAction) async {
         let tv = TVConnection.shared
+        let sonos = Sonos.shared
+        if action == .volumeUp || action == .volumeDown {
+            // Read the Sonos first: while we slept its volume may have changed.
+            await sonos.refresh()
+            if Loudness.usesSonos(sonos) {
+                // Steps of 2, like the remote's buttons do through the Sonos.
+                await sonos.step(action == .volumeUp ? 2 : -2)
+                update(tv)
+                return
+            }
+        }
         if tv.state != .connected { tv.reconnect() }
         guard await tv.waitUntilConnected(seconds: 4) else { return }
         switch action {

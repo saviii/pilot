@@ -6,6 +6,9 @@ import PilotKit
 /// change it: Pilot only reads and sets what you tap.
 @MainActor
 final class Sonos: ObservableObject {
+    /// One for the whole app, so the Lock Screen panel shows and moves the same volume as the remote.
+    static let shared = Sonos()
+
     typealias Track = SonosSOAP.Track
 
     @Published private(set) var host: String? = UserDefaults.standard.string(forKey: "sonos")
@@ -126,6 +129,14 @@ final class Sonos: ObservableObject {
     func nudge(_ delta: Int) {
         volume = min(100, max(0, volume + delta))
         commitVolume()
+    }
+
+    /// The same step, finished before it returns: for the Lock Screen panel, where iOS
+    /// can freeze the app as soon as the button's work is done.
+    func step(_ delta: Int) async {
+        volume = min(100, max(0, volume + delta))
+        quietUntil = Date().addingTimeInterval(3)
+        _ = try? await call(.rendering, "SetVolume", [("Channel", "Master"), ("DesiredVolume", "\(volume)")])
     }
 
     func setVolume(_ level: Int) {

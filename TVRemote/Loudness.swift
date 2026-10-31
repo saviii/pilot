@@ -1,11 +1,14 @@
 import Foundation
+import PilotKit
 
 /// One volume for the main bar and the side buttons: when the Sonos is playing
 /// the TV's sound, what you hear is the Sonos, so that's the number to show and
 /// move. Otherwise it's the TV's own volume.
 @MainActor
 enum Loudness {
-    static func usesSonos(_ sonos: Sonos) -> Bool { sonos.host != nil && sonos.reachable && sonos.onTV }
+    static func usesSonos(_ sonos: Sonos) -> Bool {
+        Volume.source(sonosFound: sonos.host != nil, sonosReachable: sonos.reachable, sonosPlayingTV: sonos.onTV) == .sonos
+    }
 
     static func level(_ tv: TVConnection, _ sonos: Sonos) -> Int? { usesSonos(sonos) ? sonos.volume : tv.volume }
     static func muted(_ tv: TVConnection, _ sonos: Sonos) -> Bool { usesSonos(sonos) ? sonos.muted : tv.muted }
