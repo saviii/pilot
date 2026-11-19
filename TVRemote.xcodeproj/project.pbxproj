@@ -31,6 +31,7 @@
 		CBD0D0557D8531D7E1586D5A /* OFL-martianmono.txt in Resources */ = {isa = PBXBuildFile; fileRef = 1725D562F09E8A517B30320C /* OFL-martianmono.txt */; };
 		E0039D2B0A7FF2380DD3310A /* Doto.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 8F77CF002A63F8DDBE20F8AE /* Doto.ttf */; };
 		EB89AFC0F5EEF12F5646E4BA /* MartianMono.ttf in Resources */ = {isa = PBXBuildFile; fileRef = E2292D60B17F487AF0932F82 /* MartianMono.ttf */; };
+		EF62B49EC22811E85A9475F8 /* Tree.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A2B3D83E2DC5601B7513A8A /* Tree.swift */; };
 		F40529BA7B795188480B905B /* PilotActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = F078703D780A02C59610E63D /* PilotActivity.swift */; };
 		F503EA355FA14715C6C82F7A /* Sheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8F8E21A290A84DE2791A6AF /* Sheets.swift */; };
 /* End PBXBuildFile section */
@@ -72,6 +73,7 @@
 		7710BFB4F02645288E5B22EE /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		78052858A15657E3BC7A7C2E /* PilotWidgets.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = PilotWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		7A1E9725E3C62FD3F5B8CAB7 /* PilotWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PilotWidgets.swift; sourceTree = "<group>"; };
+		7A2B3D83E2DC5601B7513A8A /* Tree.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tree.swift; sourceTree = "<group>"; };
 		8891D0439FD45DB92057E43D /* TVFinder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TVFinder.swift; sourceTree = "<group>"; };
 		89C78CA5A27F1515F4F8B813 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		8F77CF002A63F8DDBE20F8AE /* Doto.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Doto.ttf; sourceTree = "<group>"; };
@@ -111,6 +113,7 @@
 				D8F8E21A290A84DE2791A6AF /* Sheets.swift */,
 				53B40821D243D5E1AC89BC46 /* Sonos.swift */,
 				3E8FAD32B58451258682B3FA /* Theme.swift */,
+				7A2B3D83E2DC5601B7513A8A /* Tree.swift */,
 				B3E0F19D6E88F4A6B7E0FB33 /* TVConnection.swift */,
 				8891D0439FD45DB92057E43D /* TVFinder.swift */,
 				94A46E339FC62F654E112631 /* TVRemoteApp.swift */,
@@ -304,6 +307,7 @@
 				57D747DA0BA1A1EE0F1F6239 /* TVFinder.swift in Sources */,
 				4F6F27EB18FD9B0FF713D7AB /* TVRemoteApp.swift in Sources */,
 				568BBF769055F8A3F03818E4 /* Theme.swift in Sources */,
+				EF62B49EC22811E85A9475F8 /* Tree.swift in Sources */,
 				A89A8EEFA3A6BDE1EDB9B93B /* VolumeButtons.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

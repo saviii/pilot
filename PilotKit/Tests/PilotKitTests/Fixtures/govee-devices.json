@@ -1,0 +1,4 @@
+{"code":200,"message":"success","data":[
+ {"sku":"H5083","device":"AA:BB:CC:DD:EE:FF:00:11","deviceName":"Circular Smart Plug","type":"devices.types.socket","capabilities":[{"type":"devices.capabilities.on_off","instance":"powerSwitch","parameters":{"dataType":"ENUM","options":[{"name":"on","value":1},{"name":"off","value":0}]}}]},
+ {"sku":"H6008","device":"AA:BB:CC:DD:EE:FF:00:22","deviceName":"A sensor","type":"devices.types.sensor","capabilities":[{"type":"devices.capabilities.property","instance":"sensorTemperature"}]}
+]}
