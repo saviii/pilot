@@ -92,7 +92,7 @@ enum Sheet: String, Identifiable {
 
 // MARK: - Top row
 
-/// Power in its corner (and the Christmas tree beside it, once there's a plug), what's
+/// Power in its corner (and the Christmas tree under it, once there's a plug), what's
 /// on in the middle (opens your TVs and inputs), remote settings opposite.
 private struct TopRow: View {
     @EnvironmentObject private var tv: TVConnection
@@ -101,7 +101,8 @@ private struct TopRow: View {
     var body: some View {
         HStack(spacing: 12) {
             PowerKey()
-            TreeKey()
+                // Under power, in the space beside the wheel: it doesn't take width from what's on.
+                .overlay(alignment: .top) { TreeKey().offset(y: 48 + 12) }
             Spacer(minLength: 0)
             Button {
                 haptic()

@@ -19,7 +19,10 @@ struct TVRemoteApp: App {
             .preferredColorScheme(appearance.scheme)
             .onChange(of: scenePhase) { _, phase in
                 #if DEBUG
-                    if CommandLine.arguments.contains("-demo") { return tv.demo() }
+                    if CommandLine.arguments.contains("-demo") {
+                        Tree.shared.demo()
+                        return tv.demo()
+                    }
                 #endif
                 if phase == .active {
                     LiveRemote.end()

@@ -33,6 +33,14 @@ final class Tree: ObservableObject {
         await refresh()
     }
 
+    #if DEBUG
+        /// For `-demo`: a plug that's on, without Govee.
+        func demo() {
+            plug = GoveePlug(sku: "H5083", device: "demo", name: "Christmas tree")
+            on = true
+        }
+    #endif
+
     func forget() {
         Keychain.delete()
         UserDefaults.standard.removeObject(forKey: "tree.plug")
@@ -41,7 +49,7 @@ final class Tree: ObservableObject {
     }
 
     func refresh() async {
-        guard let plug, let key = Keychain.read(),
+        guard let plug, plug.device != "demo", let key = Keychain.read(),
             let (data, _) = try? await URLSession.shared.data(for: Govee.stateRequest(key: key, plug: plug)),
             let state = try? Govee.isOn(fromState: data)
         else { return }
