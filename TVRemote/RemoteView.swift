@@ -92,8 +92,8 @@ enum Sheet: String, Identifiable {
 
 // MARK: - Top row
 
-/// Power in its corner, what's on in the middle (opens your TVs and inputs),
-/// remote settings opposite.
+/// Power in its corner (and the Christmas tree beside it, once there's a plug), what's
+/// on in the middle (opens your TVs and inputs), remote settings opposite.
 private struct TopRow: View {
     @EnvironmentObject private var tv: TVConnection
     @Binding var sheet: Sheet?
@@ -101,6 +101,7 @@ private struct TopRow: View {
     var body: some View {
         HStack(spacing: 12) {
             PowerKey()
+            TreeKey()
             Spacer(minLength: 0)
             Button {
                 haptic()
@@ -648,6 +649,58 @@ private struct SixApps: View {
             }
             .buttonStyle(Pressable())
             .accessibilityLabel("Add an app")
+        }
+    }
+}
+
+// MARK: - Christmas tree
+
+/// The tree's plug, on and off with one tap. Lit dots when it's on; they pulse while
+/// Govee is switching it (about a second, through its servers).
+private struct TreeKey: View {
+    @ObservedObject private var tree = Tree.shared
+    @Environment(\.scenePhase) private var scenePhase
+
+    var body: some View {
+        if tree.plug != nil {
+            Key(shape: Circle(), action: { tree.toggle() }) {
+                DotTree(lit: tree.on == true)
+                    .frame(width: 48, height: 48)
+                    .opacity(tree.busy ? 0.5 : 1)
+                    .animation(.easeOut(duration: 0.2), value: tree.on)
+                    .animation(.easeInOut(duration: 0.5).repeatForever(autoreverses: true), value: tree.busy)
+            }
+            .accessibilityLabel(tree.on == true ? "Turn the Christmas tree off" : "Turn the Christmas tree on")
+            .task { await tree.refresh() }
+            .onChange(of: scenePhase) { _, phase in
+                if phase == .active { Task { await tree.refresh() } }
+            }
+        }
+    }
+}
+
+/// A little tree drawn in dots, like the rest of the remote.
+struct DotTree: View {
+    var lit: Bool
+    private static let rows = ["...#...", "..###..", ".#####.", "..###..", ".#####.", "#######", "...#..."]
+
+    var body: some View {
+        Canvas { context, size in
+            let pitch: CGFloat = 3.2
+            let dot: CGFloat = 2.3
+            let width = CGFloat(7) * pitch
+            let height = CGFloat(Self.rows.count) * pitch
+            let origin = CGPoint(x: (size.width - width) / 2, y: (size.height - height) / 2)
+            for (y, row) in Self.rows.enumerated() {
+                for (x, cell) in row.enumerated() where cell == "#" {
+                    let trunk = y == Self.rows.count - 1
+                    let rect = CGRect(
+                        x: origin.x + CGFloat(x) * pitch + (pitch - dot) / 2,
+                        y: origin.y + CGFloat(y) * pitch + (pitch - dot) / 2, width: dot, height: dot)
+                    let color = lit && !trunk ? Theme.accent : Theme.muted
+                    context.fill(Path(ellipseIn: rect), with: .color(color))
+                }
+            }
         }
     }
 }

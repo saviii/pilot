@@ -1046,6 +1046,10 @@ final class AirPlayPicker {
 /// Remote settings: how it looks, and the six apps at the bottom of the remote.
 struct RemoteSettingsSheet: View {
     @EnvironmentObject private var tv: TVConnection
+    @ObservedObject private var tree = Tree.shared
+    @State private var goveeKey = ""
+    @State private var goveeError: String?
+    @State private var connecting = false
     @Environment(\.dismiss) private var dismiss
     @AppStorage("appearance") private var appearance: Appearance = .system
     @State private var query = ""
@@ -1138,11 +1142,77 @@ struct RemoteSettingsSheet: View {
                 }
                 .background(Theme.key, in: RoundedRectangle(cornerRadius: 20))
                 .overlay(RoundedRectangle(cornerRadius: 20).stroke(Theme.hairline))
+
+                Caption("Christmas tree").padding(.top, 6)
+                christmasTree
             }
             .padding(24)
         }
         .scrollDismissesKeyboard(.immediately)
         .foregroundStyle(Theme.ink)
+    }
+
+    // MARK: Christmas tree
+
+    /// The Govee plug the tree is on: paste the API key Govee emailed, once.
+    @ViewBuilder
+    private var christmasTree: some View {
+        if let plug = tree.plug {
+            HStack(spacing: 12) {
+                DotTree(lit: tree.on == true).frame(width: 32, height: 32)
+                Text(plug.name).font(.body.weight(.medium)).lineLimit(1)
+                Spacer()
+                Button("Remove") {
+                    haptic()
+                    tree.forget()
+                }
+                .font(Theme.mono(12))
+                .foregroundStyle(Theme.accent)
+            }
+            .padding(.horizontal, 14)
+            .frame(height: 54)
+            .background(Theme.key, in: RoundedRectangle(cornerRadius: 14))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.hairline))
+        } else {
+            HStack(spacing: 10) {
+                SecureField("Govee API key", text: $goveeKey)
+                    .tint(Theme.accent)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                    .submitLabel(.done)
+                    .onSubmit(connectTree)
+                if connecting {
+                    ProgressView().tint(Theme.accent)
+                } else if !goveeKey.isEmpty {
+                    Button("Add", action: connectTree)
+                        .font(Theme.mono(12))
+                        .foregroundStyle(Theme.accent)
+                }
+            }
+            .padding(.horizontal, 14)
+            .frame(height: 46)
+            .background(Theme.key, in: RoundedRectangle(cornerRadius: 14))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.hairline))
+            if let goveeError {
+                Text(goveeError).font(.caption).foregroundStyle(Theme.accent)
+            }
+        }
+    }
+
+    private func connectTree() {
+        guard !goveeKey.isEmpty, !connecting else { return }
+        connecting = true
+        goveeError = nil
+        Task {
+            do {
+                try await tree.connect(key: goveeKey)
+                goveeKey = ""
+                haptic(.medium)
+            } catch {
+                goveeError = error.localizedDescription
+            }
+            connecting = false
+        }
     }
 
     // MARK: Slots
